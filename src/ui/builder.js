@@ -1,19 +1,19 @@
-import { h, showMenu, toast } from './dom.js';
+import { h, toast } from './dom.js';
 import { ctx } from './state.js';
 import { composeQuestion } from '../layout/compose.js';
 import { mathToHTML } from '../layout/render.js';
 import { openPicker } from './picker.js';
-import { openPoolDialog, openEditDialog } from './dialogs.js';
+import { openPoolDialog, openEditDialog, pickName } from './dialogs.js';
 import * as P from '../data/prep.js';
 
-const fmtLines = (n) => (Math.round(n * 100) / 100).toString();
+const fmt = (n) => (Math.round(n * 100) / 100).toString();
 
 function stepper({ value, onChange, step = 1, min = 0, manual = false, title }) {
-  const input = h('input', { type: 'text', inputmode: 'decimal', value: fmtLines(value), 'aria-label': title,
-    onChange: () => { const v = parseFloat(input.value.replace(',', '.')); if (!isNaN(v)) onChange(Math.max(min, v)); else input.value = fmtLines(value); } });
+  const input = h('input', { type: 'text', inputmode: 'decimal', value: fmt(value), 'aria-label': title,
+    onChange: () => { const v = parseFloat(input.value.replace(',', '.')); if (!isNaN(v)) onChange(Math.max(min, v)); else input.value = fmt(value); } });
   return h('span', { class: 'stepper' + (manual ? ' manual' : ''), title },
-    h('button', { 'aria-label': 'less', onClick: () => onChange(Math.max(min, Math.round((value - step) * 100) / 100)) }, '−'), input,
-    h('button', { 'aria-label': 'more', onClick: () => onChange(Math.round((value + step) * 100) / 100) }, '+'));
+    h('button', { 'aria-label': 'less', onClick: (e) => { e.stopPropagation(); onChange(Math.max(min, Math.round((value - step) * 100) / 100)); } }, '−'), input,
+    h('button', { 'aria-label': 'more', onClick: (e) => { e.stopPropagation(); onChange(Math.round((value + step) * 100) / 100); } }, '+'));
 }
 
 export function renderBuilder(root) {
@@ -21,50 +21,70 @@ export function renderBuilder(root) {
   const T = (s) => mathToHTML(s, ctx.katex);
   const qs = prep.questions.map((q, i) => composeQuestion(q, i + 1));
   const total = qs.reduce((a, q) => a + q.marks, 0);
+  const sel = ctx.ui.sel;
   root.replaceChildren();
   root.append(h('div', { class: 'summary' },
-    h('span', {}, h('b', {}, `${prep.questions.length} question${prep.questions.length === 1 ? '' : 's'}`), ` · ${total} marks · ${prep.minutes} min`),
+    h('span', {}, h('b', {}, `${prep.questions.length} question${prep.questions.length === 1 ? '' : 's'}`), ` · ${total} marks`),
     h('span', { style: { flex: 1 } }),
-    h('button', { class: 'btn small', onClick: rerollAll, title: 'New numbers for every question that is not locked' }, '↻ Re-roll all'),
-  ));
-  if (!prep.questions.length) root.append(h('div', { class: 'empty' }, 'No questions yet. Choose a preset above, press + for a random prep, or add a question.'));
+    h('button', { class: 'btn small', onClick: rerollAll, title: 'New numbers for every question that is not locked' }, '↻ Re-roll all')));
+  if (!prep.questions.length) root.append(h('div', { class: 'empty' }, 'No questions yet. Choose a preset in the sidebar, or add a question.'));
+  else root.append(h('div', { class: 'colhead' + (aos ? ' aos' : '') }, h('span'), h('span', {}, 'Question'), h('span', { class: 'c' }, 'Marks'), aos ? h('span', { class: 'c' }, 'Lines') : null, h('span')));
 
   prep.questions.forEach((q, qi) => {
     const cq = qs[qi];
-    const tags = [];
-    if (q.slots.some(s => s.def.mode === 'pool')) tags.push(h('span', { class: 'tag pool' }, 'pool'));
-    if (q.slots.some(s => s.meta && s.meta.multipart)) tags.push(h('span', { class: 'tag' }, 'multipart'));
-    if (q.slots.some(s => s.locked)) tags.push(h('span', { class: 'tag lock' }, 'locked'));
-    const card = h('div', { class: 'q-card' },
-      h('div', { class: 'q-head' }, h('span', { class: 'n' }, `${qi + 1}.`), ...tags,
-        h('span', { class: 'hint' }, `${cq.marks} mark${cq.marks === 1 ? '' : 's'}`), h('span', { class: 'sp' }),
-        h('button', { class: 'iconbtn', title: 'Move up', onClick: () => { P.moveQuestion(prep, qi, -1); ctx.commit(); } }, '↑'),
-        h('button', { class: 'iconbtn', title: 'Move down', onClick: () => { P.moveQuestion(prep, qi, 1); ctx.commit(); } }, '↓'),
-        h('button', { class: 'btn small ghost', title: 'Add another part (a), (b)… to this question', onClick: () => addPart(qi) }, '+ part'),
-        h('button', { class: 'iconbtn', title: 'Remove this question', onClick: () => { prep.questions.splice(qi, 1); ctx.commit(); } }, '✕')));
-    if (cq.stem) card.append(h('div', { class: 'prow', style: { background: '#fafbfc' } }, h('div'), h('div', { class: 'txt', style: { cursor: 'default' }, html: T(cq.stem) }), h('div')));
-    const seen = new Set();
-    cq.parts.forEach((p) => {
+    const isSel = sel && sel.q === qi;
+    const card = h('div', { class: 'q-card' + (isSel ? ' sel' : '') },
+      h('div', { class: 'q-head' }, h('span', { class: 'n' }, `${qi + 1}.`), h('span', { class: 'hint' }, `${cq.marks} mark${cq.marks === 1 ? '' : 's'}`),
+        q.slots.some(s => s.locked) ? h('span', { class: 'lockmark', title: 'Locked' }, '🔒') : null,
+        h('span', { class: 'sp' }),
+        h('span', { class: 'acts' },
+          h('button', { class: 'iconbtn', title: 'Move up', onClick: () => { P.moveQuestion(prep, qi, -1); ctx.ui.sel = sel && sel.q === qi ? { ...sel, q: Math.max(0, qi - 1) } : null; ctx.commit(); } }, '↑'),
+          h('button', { class: 'iconbtn', title: 'Move down', onClick: () => { P.moveQuestion(prep, qi, 1); ctx.ui.sel = sel && sel.q === qi ? { ...sel, q: Math.min(prep.questions.length - 1, qi + 1) } : null; ctx.commit(); } }, '↓'),
+          h('button', { class: 'iconbtn', title: 'Remove this question', onClick: () => { prep.questions.splice(qi, 1); ctx.ui.sel = null; ctx.commit(); } }, '✕'))));
+    if (cq.stem) card.append(h('div', { class: 'stemrow' }, h('div'), h('div', { class: 'txt', html: T(cq.stem) }), h('div'), h('div')));
+    cq.parts.forEach((p, k) => {
       const slot = q.slots[p.si];
-      const firstOfSlot = !seen.has(p.si); seen.add(p.si);
+      const firstOfSlot = cq.parts.findIndex(x => x.si === p.si) === k;
+      const isRowSel = isSel && sel.k === k;
       const manualM = slot.marksManual[p.pi], manualL = slot.linesManual[p.pi];
-      const ctl = h('div', { class: 'ctl' },
-        h('span', { class: 'stlabel' }, 'marks'),
-        stepper({ value: p.marks, step: 1, min: 1, manual: manualM, title: 'Marks for this part', onChange: (v) => { P.setMarks(slot, p.pi, v); ctx.commit(); } }),
-        aos ? [h('span', { class: 'stlabel' }, 'lines'), stepper({ value: p.lines, step: 0.5, min: 0.5, manual: manualL, title: 'Working space in ruled lines (decimals allowed)', onChange: (v) => { P.setLines(slot, p.pi, v); ctx.commit({ builder: true }); } })] : null,
-        firstOfSlot ? [
-          h('button', { class: 'iconbtn', title: slot.locked ? 'Locked: unlock in the ⋯ menu' : 'New numbers (same kind of question)', disabled: slot.locked, onClick: () => { P.rerollSlot(prep, slot); ctx.commit(); } }, '↻'),
-          h('button', { class: 'iconbtn', 'aria-label': 'More', title: 'More', onClick: (e) => slotMenu(e.currentTarget, q, qi, slot, p.si) }, '⋯')] : null);
-      const meta = firstOfSlot ? `${slot.meta.type}${slot.meta.label ? ' · ' + slot.meta.label : ''}${p.edited ? ' · edited by you' : ''}` : '';
-      card.append(h('div', { class: 'prow' },
+      const row = h('div', { class: 'prow' + (aos ? ' aos' : '') + (isRowSel ? ' sel' : '') },
         h('div', { class: 'lab' }, p.l ? `(${p.l})` : ''),
-        h('div', { class: 'txt', title: 'Click to choose a different question', onClick: () => changeSlot(q, qi, slot), html: T(p.text) + (p.calc ? ' <span class="badge">calculator</span>' : '') + (meta ? `<div class="meta">${meta.replace(/</g, '&lt;')}</div>` : '') }),
-        ctl));
+        h('div', { class: 'txt', title: 'Click for details and options', onClick: () => { ctx.ui.sel = isRowSel ? null : { q: qi, k }; ctx.hooks.builder(); },
+          html: T(p.text) + (p.calc ? ' <span class="badge">calculator</span>' : '') + (p.edited ? ' <span class="badge ed">edited</span>' : '') }),
+        h('div', { class: 'c' }, stepper({ value: p.marks, step: 1, min: 1, manual: manualM, title: 'Marks for this part', onChange: (v) => { P.setMarks(slot, p.pi, v); ctx.commit(); } })),
+        aos ? h('div', { class: 'c' }, stepper({ value: p.lines, step: 0.5, min: 0.5, manual: manualL, title: 'Working space in ruled lines (decimals allowed)', onChange: (v) => { P.setLines(slot, p.pi, v); ctx.commit({ builder: true }); } })) : null,
+        h('div', { class: 'c' }, firstOfSlot ? h('button', { class: 'iconbtn', title: slot.locked ? 'Locked' : 'New numbers (same kind of question)', disabled: slot.locked, onClick: () => { P.rerollSlot(prep, slot); ctx.commit(); } }, '↻') : null));
+      card.append(row);
+      if (isRowSel) card.append(detailPanel(q, qi, slot, p.si, cq, p));
     });
     root.append(card);
   });
   root.append(h('div', { class: 'addrow' },
-    h('button', { class: 'btn', onClick: () => openPicker({ title: 'Add a question', confirmLabel: 'Add question', onPick: ({ pick, seed, flags }) => { const q = P.addQuestion(prep, pick); const s = q.slots[0]; s.seed = seed; if (flags) s.flags = flags; P.reseed(s, seed); ctx.commit(); } }) }, '+ Add question')));
+    h('button', { class: 'btn', onClick: () => openPicker({ title: 'Add a question', confirmLabel: 'Add question', onPick: ({ pick, seed, flags }) => { const q = P.addQuestion(prep, pick); const s = q.slots[0]; s.seed = seed; if (flags) s.flags = flags; P.reseed(s, seed); ctx.ui.sel = { q: prep.questions.length - 1, k: 0 }; ctx.commit(); } }) }, '+ Add question')));
+}
+
+// The panel under a selected row: what the question is, and everything you can do with it.
+function detailPanel(q, qi, slot, si, cq, part) {
+  const prep = ctx.prep;
+  const slotParts = cq.parts.filter(x => x.si === si);
+  const range = slotParts.length > 1 ? `Applies to parts (${slotParts[0].l})–(${slotParts[slotParts.length - 1].l})` : null;
+  const flagsInt = slot.flags ? slot.flags.integer !== false : true;
+  const btn = (label, fn, opts = {}) => h('button', { class: 'btn small' + (opts.danger ? ' danger' : ''), disabled: opts.disabled, title: opts.title, onClick: fn }, label);
+  const isPool = slot.def.mode === 'pool';
+  const pickLine = pickName(slot.pick);
+  return h('div', { class: 'detail' },
+    h('div', { class: 'dpath' }, h('b', {}, pickLine), isPool ? h('span', { class: 'tag pool' }, 'pool') : null, slot.meta && slot.meta.multipart ? h('span', { class: 'tag' }, 'multipart') : null, slot.locked ? h('span', { class: 'tag lock' }, 'locked') : null),
+    range ? h('div', { class: 'hint' }, range) : null,
+    h('div', { class: 'dbtns' },
+      btn('Change question…', () => changeSlot(q, qi, slot)),
+      btn('Edit wording or answer…', () => openEditDialog(slot, () => ctx.commit())),
+      btn('+ Add a part', () => addPart(qi)),
+      btn(slot.locked ? 'Unlock' : 'Lock', () => { slot.locked = !slot.locked; ctx.commit(); }, { title: 'A locked question is not changed by re-roll' }),
+      isPool ? btn('Pool choices…', () => openPoolDialog(slot, qi, si)) : btn('Make this a pool…', () => { slot.def = { mode: 'pool', label: 'Pool', candidates: [{ pick: slot.pick, on: true }] }; ctx.commit(); openPoolDialog(slot, qi, si); }),
+      isPool ? btn('Make fixed', () => { slot.def = { mode: 'fixed', pick: slot.pick }; ctx.commit(); }) : null,
+      btn('Reset marks and lines', () => { slot.marksManual = slot.marksManual.map(() => false); slot.linesManual = slot.linesManual.map(() => false); P.reseed(slot, slot.seed); ctx.commit(); }),
+      cq.parts.length > 1 || prep.questions.length > 0 ? btn('Remove', () => { P.removeSlot(prep, qi, si); ctx.ui.sel = null; ctx.commit(); }, { danger: true }) : null),
+    slot.meta.integer ? h('label', { class: 'dint' }, h('input', { type: 'checkbox', checked: flagsInt, onChange: () => { P.setFlags(slot, { integer: !flagsInt }); ctx.commit(); } }), ' Integer answers only') : null);
 }
 
 function rerollAll() {
@@ -72,7 +92,6 @@ function rerollAll() {
   prep.questions.forEach(q => q.slots.forEach(s => P.rerollSlot(prep, s)));
   ctx.commit();
 }
-
 function changeSlot(q, qi, slot) {
   openPicker({ title: `Choose a question for ${qi + 1}`, current: slot.pick, onPick: ({ pick, seed, flags }) => {
     P.setPick(slot, pick); slot.seed = seed; if (flags) slot.flags = flags; P.reseed(slot, seed); ctx.commit();
@@ -83,25 +102,4 @@ function addPart(qi) {
   openPicker({ title: `Add a part to question ${qi + 1}`, confirmLabel: 'Add part', onPick: ({ pick, seed, flags }) => {
     const s = P.addSlotToQuestion(prep, q, pick); if (flags) s.flags = flags; P.reseed(s, seed); ctx.commit();
   } });
-}
-
-function slotMenu(anchor, q, qi, slot, si) {
-  const prep = ctx.prep;
-  const items = [
-    { label: 'Change question…', onClick: () => changeSlot(q, qi, slot) },
-    { label: 'Edit wording or answer…', onClick: () => openEditDialog(slot, () => ctx.commit()) },
-    { label: slot.locked ? 'Unlock (allow re-roll)' : 'Lock this question', onClick: () => { slot.locked = !slot.locked; ctx.commit(); } },
-    { sep: true },
-  ];
-  if (slot.def.mode === 'pool') {
-    items.push({ label: 'Pool choices…', onClick: () => openPoolDialog(slot, qi, si) });
-    items.push({ label: 'Make this a fixed question', onClick: () => { slot.def = { mode: 'fixed', pick: slot.pick }; ctx.commit(); } });
-  } else {
-    items.push({ label: 'Make this a pool…', onClick: () => { slot.def = { mode: 'pool', label: 'Pool', candidates: [{ pick: slot.pick, on: true }] }; ctx.commit(); openPoolDialog(slot, qi, si); } });
-  }
-  if (slot.meta.integer) items.push({ label: (slot.flags ? slot.flags.integer !== false : true) ? 'Allow non-integer answers' : 'Integer answers only', onClick: () => { const cur = slot.flags ? slot.flags.integer !== false : true; P.setFlags(slot, { integer: !cur }); ctx.commit(); } });
-  items.push({ label: 'Reset marks and working space', onClick: () => { slot.marksManual = slot.marksManual.map(() => false); slot.linesManual = slot.linesManual.map(() => false); P.reseed(slot, slot.seed); ctx.commit(); } });
-  items.push({ sep: true });
-  items.push({ label: 'Remove', danger: true, onClick: () => { P.removeSlot(prep, qi, si); ctx.commit(); } });
-  showMenu(anchor, items);
 }

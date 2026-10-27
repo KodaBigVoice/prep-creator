@@ -26,8 +26,8 @@ export function openPoolDialog(slot, qi, si) {
         h('input', { type: 'checkbox', checked: c.on, id: `pc${i}`, onChange: (e) => { c.on = e.target.checked; } }),
         h('label', { for: `pc${i}`, style: { flex: 1 } }, pickName(c.pick)),
         h('button', { class: 'btn small ghost', title: 'Remove from this pool', onClick: () => { d.candidates.splice(i, 1); draw(); } }, '✕'))),
-      h('div', { class: 'addrow' }, h('button', { class: 'btn small', onClick: () => openPicker({ title: 'Add a choice to the pool', confirmLabel: 'Add to pool', onPick: ({ pick }) => { const [t] = pick.split(':'); const any = typeById[t].variants.length > 1; d.candidates.push({ pick: any ? `${t}:*` : pick, on: true }); draw(); } }) }, '+ Add a choice')),
-      h('div', { class: 'hint', style: { marginTop: '6px' } }, 'Adding a choice from the picker adds every option of that question type; remove or edit it later if you want fewer.'));
+      h('div', { class: 'addrow' }, h('button', { class: 'btn small', onClick: () => openPicker({ title: 'Add a choice to the pool', confirmLabel: 'Add to pool', onPick: ({ pick, scope }) => { for (const sc of (scope && scope.length ? scope : [pick])) if (!d.candidates.some(c => c.pick === sc)) d.candidates.push({ pick: sc, on: true }); draw(); } }) }, '+ Add a choice')),
+      h('div', { class: 'hint', style: { marginTop: '6px' } }, 'In the picker, choose a topic or type and leave Options on “Any” to add all its options, or pick one option to add just that.'));
   };
   draw();
   const m = modal({ title: `Pool for question ${qi + 1}`, narrow: true, body: area, footer: [

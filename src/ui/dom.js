@@ -6,7 +6,7 @@ export function h(tag, attrs = {}, ...kids) {
     else if (k === 'html') el.innerHTML = v;
     else if (k === 'style' && typeof v === 'object') Object.assign(el.style, v);
     else if (k.startsWith('on') && typeof v === 'function') el.addEventListener(k.slice(2).toLowerCase(), v);
-    else if (v === true) el.setAttribute(k, '');
+    else if (v === true) el.setAttribute(k, (k.startsWith('aria-') || k.startsWith('data-')) && k !== 'data-menu-anchor' ? 'true' : '');
     else el.setAttribute(k, v);
   }
   for (const kid of kids.flat(Infinity)) {
@@ -40,11 +40,11 @@ export function showMenu(anchor, items) {
   openMenu = m;
 }
 
-export function modal({ title, body, footer, narrow = false, onClose }) {
+export function modal({ title, body, footer, narrow = false, wide = false, onClose }) {
   const close = () => { scrim.remove(); document.removeEventListener('keydown', esc); onClose && onClose(); };
   const esc = (e) => { if (e.key === 'Escape') close(); };
   const scrim = h('div', { class: 'scrim', onMousedown: (e) => { if (e.target === scrim) close(); } },
-    h('div', { class: 'dlg' + (narrow ? ' narrow' : ''), role: 'dialog', 'aria-label': title },
+    h('div', { class: 'dlg' + (narrow ? ' narrow' : '') + (wide ? ' wide' : ''), role: 'dialog', 'aria-label': title },
       h('header', {}, h('h2', {}, title), h('button', { class: 'btn ghost', onClick: close, 'aria-label': 'Close' }, '✕')),
       h('div', { class: 'body' }, body),
       footer ? h('footer', {}, footer) : null));
