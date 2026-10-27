@@ -118,18 +118,17 @@ function renderToolbar() {
   setKids(toolbar,
     h('button', { class: 'iconbtn hamburger', 'aria-label': 'Options', 'aria-pressed': !!ctx.ui.sidebar, title: ctx.ui.sidebar ? 'Hide the options panel' : 'Show the options panel', onClick: toggleSidebar },
       h('span', { html: '<svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 5h12M3 9h12M3 13h12"/></svg>' })),
-    h('span', { class: 'brand' }, 'Prep Creator'),
+    h('button', { class: 'btn', 'data-menu-anchor': '', onClick: (e) => newMenu(e.currentTarget) }, 'New ▾'),
     h('div', { class: 'field' }, h('label', {}, 'Name'), nameIn),
-    seg([['qo', 'Prep style'], ['aos', 'Exam style']]),
     h('span', { class: 'sp' }),
     saveStat,
     h('span', { class: 'splitbtn' },
       h('button', { class: 'btn', onClick: () => doSave(), title: saveMode() === 'file' ? 'Save to the JSON file (and in this browser)' : 'Save in this browser' }, 'Save'),
       h('button', { class: 'btn arrow', 'aria-label': 'Save options', onClick: (e) => saveMenu(e.currentTarget) }, '▾')),
-    h('button', { class: 'btn', 'data-menu-anchor': '', onClick: (e) => newMenu(e.currentTarget) }, 'New ▾'),
     h('span', { class: 'divider' }),
+    seg([['qo', 'Prep style'], ['aos', 'Exam style']]),
     h('span', { class: 'splitbtn' },
-      h('button', { class: 'btn primary printbtn', onClick: () => doPrint(), title: 'Print or save as PDF' }, PRINT_LABEL[printMode()]),
+      h('button', { class: 'btn primary printbtn', onClick: () => doPrint(), title: PRINT_LABEL[printMode()] }, 'Print'),
       h('button', { class: 'btn primary arrow', 'aria-label': 'Print options', onClick: (e) => printMenu(e.currentTarget) }, '▾')));
   ctx.hooks.status();
 }
@@ -308,6 +307,7 @@ setKids(main, sideEl, builderEl, splitEl, previewEl);
 // ---------- preview zoom ----------
 const MM = 96 / 25.4;
 let fitZoom = 1;
+const fitMode = () => store.settings.fitMode || 'w';
 const zoomNow = () => (ctx.ui.zoom === 'fit' ? fitZoom : ctx.ui.zoom);
 function setZoom(z, cx = null, cy = null) {
   const old = zoomNow();
@@ -321,13 +321,16 @@ function setZoom(z, cx = null, cy = null) {
   previewEl.scrollTop = (st + cy - barH) * r + barH - cy;
   drawZoomBar();
 }
+function setFit(m) { store.settings.fitMode = m; ctx.ui.zoom = 'fit'; ctx.save(); relayout(); }
 const zoomBar = h('span', { class: 'zoombar' });
 function drawZoomBar() {
   setKids(zoomBar,
     h('button', { class: 'iconbtn', title: 'Zoom out (Ctrl + scroll down)', onClick: () => setZoom(zoomNow() / 1.15) }, '−'),
     h('button', { class: 'zoompct', title: 'Click for 100%', onClick: () => setZoom(1) }, `${Math.round(zoomNow() * 100)}%`),
     h('button', { class: 'iconbtn', title: 'Zoom in (Ctrl + scroll up)', onClick: () => setZoom(zoomNow() * 1.15) }, '+'),
-    h('button', { class: 'btn small', title: 'Fit the page to the width', onClick: () => { ctx.ui.zoom = 'fit'; relayout(); } }, 'Fit width'));
+    h('button', { class: 'btn small', 'data-menu-anchor': '', title: 'Fit the page in the window', onClick: (e) => showMenu(e.currentTarget, [
+      { label: 'Fit width', checked: fitMode() === 'w', onClick: () => setFit('w') },
+      { label: 'Fit height', sub: 'Shows a whole page at once', checked: fitMode() === 'h', onClick: () => setFit('h') }]) }, 'Fit ▾'));
 }
 previewEl.addEventListener('wheel', (e) => {
   if (!(e.ctrlKey || e.metaKey)) return;
@@ -354,13 +357,16 @@ function relayout() {
     try {
       const lay = buildLayout(ctx.prep, ctx.layout, ctx.katex);
       pagesEl.innerHTML = lay.pages.join('');
-      fitZoom = Math.min(1.5, Math.max(0.2, (previewEl.clientWidth - 40) / (210 * MM)));
+      fitZoom = fitMode() === 'h'
+        ? Math.min(1.5, Math.max(0.2, (previewEl.clientHeight - pvTop.offsetHeight - 36) / (297 * MM)))
+        : Math.min(1.5, Math.max(0.2, (previewEl.clientWidth - 40) / (210 * MM)));
       pagesEl.style.setProperty('--zoom', zoomNow().toFixed(4));
       const tm = totalMarks(lay.qs);
       drawZoomBar();
-      setKids(pvTop, h('span', { class: 'pvinfo' }, `${ctx.layout.mode === 'aos' ? 'Exam style' : 'Prep style'} · ${lay.info.text} · ${tm} marks`),
+      setKids(pvTop,
         ...(lay.info.warnings || []).map(w => h('span', { class: 'warn' }, w.text)),
         lay.info.overfull ? h('span', { class: 'warn' }, 'Too much for the page at 10 pt: it has spilled over.') : null,
+        h('span', { class: 'pvinfo' }),
         zoomBar);
     } catch (e) { console.error(e); setKids(pvTop, h('span', { class: 'err' }, 'Layout error: ' + e.message)); }
   });
