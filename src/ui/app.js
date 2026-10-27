@@ -364,10 +364,9 @@ function relayout() {
       const tm = totalMarks(lay.qs);
       drawZoomBar();
       setKids(pvTop,
+        zoomBar,
         ...(lay.info.warnings || []).map(w => h('span', { class: 'warn' }, w.text)),
-        lay.info.overfull ? h('span', { class: 'warn' }, 'Too much for the page at 10 pt: it has spilled over.') : null,
-        h('span', { class: 'pvinfo' }),
-        zoomBar);
+        lay.info.overfull ? h('span', { class: 'warn' }, 'Too much for the page at 10 pt: it has spilled over.') : null);
     } catch (e) { console.error(e); setKids(pvTop, h('span', { class: 'err' }, 'Layout error: ' + e.message)); }
   });
 }
