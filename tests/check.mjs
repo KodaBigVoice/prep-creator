@@ -5,7 +5,8 @@ import vm from 'node:vm';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { TYPES, generate, hasIntegerFlag } from '../src/core/engine.js';
+import { TYPES, generate, hasIntegerFlag, variantD } from '../src/core/engine.js';
+import { VARIANT_D } from '../src/data/difficulty.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const katex = (() => { const m = { exports: {} }; vm.runInNewContext(fs.readFileSync(path.join(here, '../vendor/katex/katex.min.js'), 'utf8'), { module: m, exports: m.exports }); return m.exports; })();
@@ -23,6 +24,10 @@ const unregistered = files.filter(f => !NONTYPE.has(f) && !idx.includes(`./${f}`
 
 const FORBIDDEN = [/leave your answer/i, /simplest form/i, /as a mixed number/i, /undefined/, /NaN/, /\bwork out the value of\b.*\bwork out\b/i, /  +/];
 const problems = []; const dump = []; const stats = [];
+// every option needs a difficulty number, and the table must not mention options that no longer exist
+const known = new Set();
+for (const t of TYPES) for (const v of t.variants) { known.add(`${t.id}:${v.id}`); if (variantD(t, v) === null) problems.push(`${t.id}:${v.id}: no difficulty set (src/data/difficulty.js)`); }
+for (const k of Object.keys(VARIANT_D)) if (!known.has(k)) problems.push(`difficulty.js has an unknown option: ${k}`);
 const T = (s, where) => {
   const segs = [];
   let i = 0;

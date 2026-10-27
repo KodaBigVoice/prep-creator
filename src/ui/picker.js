@@ -26,13 +26,21 @@ export function openPicker({ title = 'Choose a question', current = null, confir
   mkCol('topic', 'Topic'); mkCol('type', 'Type'); mkCol('opt', 'Options');
 
   const topicItems = () => [...new Set(lvAll().map(e => e.topic))].sort((a, b) => a.localeCompare(b)).map(t => ({ id: t, name: t }));
+  // types: easiest first within a topic; options: easiest first within a type. A number shows the position when the list belongs to one parent.
   const typeItems = () => {
     const seen = new Map();
-    for (const e of lvAll()) if ((!st.topic || e.topic === st.topic) && !seen.has(e.typeId)) seen.set(e.typeId, { id: e.typeId, name: e.type, sub: st.topic ? '' : e.topic });
-    return [...seen.values()];
+    for (const e of lvAll()) if ((!st.topic || e.topic === st.topic) && !seen.has(e.typeId)) seen.set(e.typeId, { id: e.typeId, name: e.type, sub: st.topic ? '' : e.topic, td: e.td, ti: e.ti, topic: e.topic });
+    const list = [...seen.values()].sort((a, b) => (st.topic ? (a.td - b.td || a.ti - b.ti) : (a.topic.localeCompare(b.topic) || a.td - b.td || a.ti - b.ti)));
+    if (st.topic) list.forEach((it, i) => { it.rank = i + 1; });
+    return list;
   };
-  const optItems = () => lvAll().filter(e => (!st.topic || e.topic === st.topic) && (!st.type || e.typeId === st.type))
-    .map(e => ({ id: e.key, name: e.label, sub: st.type ? '' : e.type, multipart: e.multipart }));
+  const optItems = () => {
+    const list = lvAll().filter(e => (!st.topic || e.topic === st.topic) && (!st.type || e.typeId === st.type))
+      .sort((a, b) => (st.type ? (a.d - b.d || a.vi - b.vi) : (a.topic.localeCompare(b.topic) || a.td - b.td || a.ti - b.ti || a.d - b.d || a.vi - b.vi)))
+      .map(e => ({ id: e.key, name: e.label, sub: st.type ? '' : e.type, multipart: e.multipart }));
+    if (st.type) list.forEach((it, i) => { it.rank = i + 1; });
+    return list;
+  };
   const itemsOf = { topic: topicItems, type: typeItems, opt: optItems };
 
   function drawCol(id) {
@@ -41,7 +49,7 @@ export function openPicker({ title = 'Choose a question', current = null, confir
     const items = itemsOf[id]().filter(it => toks.every(t => (it.name + ' ' + (it.sub || '')).toLowerCase().includes(t)));
     const cur = st[id];
     const mk = (it, any) => h('div', { class: 'pk-it' + ((any ? cur === null : cur === it.id) ? ' sel' : ''), role: 'option', 'aria-selected': any ? cur === null : cur === it.id, 'data-id': any ? '' : it.id, onClick: () => choose(id, any ? null : it.id) },
-      h('span', { class: 'nm' }, any ? 'Any' : it.name), !any && it.multipart ? h('span', { class: 'badge' }, 'multipart') : null, !any && it.sub ? h('span', { class: 'sub' }, it.sub) : null);
+      h('span', { class: 'rk' }, !any && it.rank ? String(it.rank) : ''), h('span', { class: 'nm' }, any ? 'Any' : it.name), !any && it.multipart ? h('span', { class: 'badge' }, 'multipart') : null, !any && it.sub ? h('span', { class: 'sub' }, it.sub) : null);
     setKids(list, mk(null, true), ...items.map(it => mk(it, false)), items.length ? null : h('div', { class: 'pk-none' }, 'No match'));
   }
   const scrollSel = (id) => { const el = cols[id].list.querySelector('.pk-it.sel'); if (el) { const l = cols[id].list; l.scrollTop = Math.max(0, el.offsetTop - l.clientHeight / 2 + el.offsetHeight / 2); } };

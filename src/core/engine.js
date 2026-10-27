@@ -1,6 +1,7 @@
 // Turns a "pick" (type + variant) and a seed into a finished question.
 import { makeRng, newSeed } from './rng.js';
 import ALL from '../types/index.js';
+import { VARIANT_D } from '../data/difficulty.js';
 
 export const TYPES = ALL;
 export const typeById = Object.fromEntries(ALL.map(t => [t.id, t]));
@@ -17,15 +18,21 @@ export function parsePick(pick) {
 export const pickKey = (t, v) => `${t.id}:${v.id}`;
 
 // every selectable thing, flat: used by search and the Topic > Type > Options menus
+export const variantD = (t, v) => (v.d ?? VARIANT_D[`${t.id}:${v.id}`] ?? null);
 export function entries() {
   const out = [];
-  for (const t of ALL) for (const v of t.variants) {
-    out.push({
-      key: pickKey(t, v), typeId: t.id, variantId: v.id, topic: t.topic, type: t.type, label: v.label,
-      multipart: !!t.multipart, levels: t.levels || [],
-      hay: [t.topic, t.type, v.label, t.search || '', t.code || ''].join(' ').toLowerCase(),
+  ALL.forEach((t, ti) => {
+    const ds = t.variants.map(v => variantD(t, v)).filter(x => x !== null);
+    const td = ds.length ? ds.reduce((a, b) => a + b, 0) / ds.length : 5;
+    t.variants.forEach((v, vi) => {
+      out.push({
+        key: pickKey(t, v), typeId: t.id, variantId: v.id, topic: t.topic, type: t.type, label: v.label,
+        multipart: !!t.multipart, levels: t.levels || [],
+        d: variantD(t, v) ?? 5, td, ti, vi,
+        hay: [t.topic, t.type, v.label, t.search || '', t.code || ''].join(' ').toLowerCase(),
+      });
     });
-  }
+  });
   return out;
 }
 export const defaultFlags = (t) => ({ integer: t.integerDefault !== false });
