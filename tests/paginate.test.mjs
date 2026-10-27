@@ -1,0 +1,21 @@
+import { planPages } from '../src/layout/paginate.js';
+let fail = 0;
+const ok = (c, m) => { if (!c) { fail++; console.log('FAIL', m); } else console.log('ok  ', m); };
+// 10 equal questions, each 20 mm text + 5 lines (8mm) designated; page holds 250 mm
+const mk = (n, fixed, flex, marks = 4) => Array.from({ length: n }, (_, i) => ({ fixed, flex, marks, label: i + 1 }));
+let r = planPages(mk(10, 20, 3), { cap1: 240, capN: 270, lineMM: 8 });
+ok(r.pages.length === 2, 'ten questions of 44mm take 2 pages (got ' + r.pages.length + ')');
+ok(Math.abs(r.pages[0].marks - r.pages[1].marks) <= 4, 'marks balanced ' + r.pages.map(p => p.marks));
+r = planPages(mk(10, 20, 6), { cap1: 240, capN: 270, lineMM: 8 });
+ok(r.pages.length >= 2 && r.pages.every(p => p.factor >= 0.85 && p.factor <= 1.3), 'factors within band ' + r.pages.map(p => p.factor.toFixed(2)));
+r = planPages(mk(6, 20, 2), { cap1: 240, capN: 270, lineMM: 8 });
+ok(r.pages.length === 1 && Math.abs(r.pages[0].factor - 1.25) < 0.01, 'six questions fit one page, stretch ' + r.pages[0].factor.toFixed(2));
+r = planPages(mk(10, 20, 5), { cap1: 240, capN: 270, lineMM: 8 });
+ok(r.pages.length === 3, 'ten questions of 60mm need 3 pages (got ' + r.pages.length + ')');
+r = planPages(mk(9, 20, 5), { cap1: 240, capN: 270, lineMM: 8 });
+ok(r.pages.length === 2, 'nine questions need 2 pages (got ' + r.pages.length + ')');
+r = planPages([{ fixed: 300, flex: 0, marks: 3, label: 1 }], { cap1: 240, capN: 270, lineMM: 8 });
+ok(r.warnings.length === 1, 'a question taller than a page is flagged');
+r = planPages(mk(3, 20, 3), { cap1: 240, capN: 270, lineMM: 8 });
+ok(r.pages.length === 1 && r.pages[0].factor === 1.3, 'few questions: stretch capped at 1.3, got ' + r.pages[0].factor);
+process.exit(fail ? 1 : 0);

@@ -1,0 +1,10 @@
+{
+  "name": "prep-creator",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "check": "node tests/check.mjs",
+    "verify": "node tests/check.mjs --dump tests/out.json && python3 tests/verify.py tests/out.json"
+  }
+}

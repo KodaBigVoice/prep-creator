@@ -1,0 +1,50 @@
+/* The printed sheet. Real sizes in mm and pt, so what you see is what prints. */
+@font-face{font-family:Inter;font-weight:400;src:url(../fonts/Inter-Regular.otf)}
+@font-face{font-family:Inter;font-weight:500;src:url(../fonts/Inter-Medium.otf)}
+@font-face{font-family:Inter;font-weight:700;src:url(../fonts/Inter-Bold.otf)}
+
+.sheet{box-sizing:border-box;width:210mm;height:297mm;padding:var(--mt,15mm) var(--mx,18mm) var(--mb,15mm);background:#fff;color:#111;
+  font-family:Inter,"Segoe UI",Arial,sans-serif;font-size:var(--fs,11pt);line-height:var(--lh,1.5);position:relative;display:flex;flex-direction:column;overflow:hidden;
+  font-variant-numeric:tabular-nums}
+.sheet *{box-sizing:border-box}
+.sheet h1{font-size:1.45em;line-height:1.2;margin:0;font-weight:700;letter-spacing:-.01em}
+.sheet .head{display:flex;justify-content:space-between;align-items:baseline;gap:10mm}
+.sheet .name{white-space:nowrap;font-size:.95em;color:#333}
+.sheet .name span{display:inline-block;width:62mm;border-bottom:1px solid #333;margin-left:2mm}
+.sheet .intro{margin:2.2mm 0 0;color:#333}
+.sheet .rule{border:0;border-top:1.4px solid #111;margin:3.2mm 0 0}
+.sheet .runhead{display:flex;justify-content:space-between;font-size:.8em;color:#555;height:5mm;line-height:5mm}
+.sheet .runrule{border:0;border-top:.6px solid #999;margin:1mm 0 0}
+.sheet .body{flex:1;display:flex;flex-direction:column;min-height:0;margin-top:4mm}
+.sheet .katex{font-size:1.07em}
+.sheet .calc{display:inline-block;border:1.3px solid #111;padding:.2mm 2mm;margin-right:2.2mm;font-size:.72em;font-weight:700;letter-spacing:.08em;line-height:1.35;vertical-align:.1em}
+
+/* questions only */
+.qo .q{display:grid;grid-template-columns:8.5mm 1fr;align-items:baseline;flex:none}
+.qo .q .num{font-weight:700}
+.qo .q .qmain{min-width:0}
+.qo .q .lead{margin-bottom:.6mm}
+.qo .part{display:grid;grid-template-columns:7.5mm 1fr 11mm;align-items:baseline}
+.qo .part.nolabel{grid-template-columns:1fr 11mm}
+.qo .part .mk{text-align:right;white-space:nowrap}
+.qo .part.fr{padding:.9mm 0 1.1mm}
+
+/* answer on sheet: flat rows, working boxes are explicit heights */
+.aos .frow{display:grid;grid-template-columns:8.5mm 7.5mm 1fr;align-items:baseline;flex:none}
+.aos .frow .num{font-weight:700}
+.aos .frow.qstart{border-top:.5px solid #bbb;margin-top:2.4mm;padding-top:2.4mm}
+.aos .frow.fr{padding:.9mm 0 1.1mm}
+.aos .fws{position:relative;flex:none}
+.aos .fws .mk{position:absolute;right:0;bottom:.8mm;white-space:nowrap}
+
+/* answers sheet */
+.ans-sheet .at{width:100%;border-collapse:collapse;margin-top:5mm}
+.ans-sheet .at th{text-align:left;font-size:.8em;text-transform:uppercase;letter-spacing:.08em;color:#444;padding:1.6mm 2mm;border-bottom:1.4px solid #111}
+.ans-sheet .at td{padding:2.2mm 2mm;border-bottom:.6px solid #bbb;vertical-align:middle}
+.ans-sheet .at .c1{width:16mm;font-weight:700}.ans-sheet .at .c2{width:56mm}.ans-sheet .at .c3{color:#222}
+.ans-sheet .at tbody tr:nth-child(odd) td{background:#fafafa}
+.ans-sheet .by-hand{font-size:.75em;color:#555;margin-left:1.5mm}
+
+@page{size:A4;margin:0}
+
+.mblock{display:block}.mblock .katex-display{margin:.5mm 0 .8mm;text-align:left}.mblock .katex-display>.katex{text-align:left}
