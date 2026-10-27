@@ -73,12 +73,23 @@ export function rerollSlot(prep, slot) {
   slot.seed = newSeed();
   slot.edits = null;
   if (slot.def.mode === 'pool') choosePick(slot, usedTopics(prep, slot.id), makeRng(newSeed()));
+  else if (slot.def.pick && slot.def.pick.endsWith(':*')) {      // "any option of this type": roll a different option where there is one
+    const r = makeRng(newSeed()); const old = slot.pick; let next = resolvePick(slot.def.pick, r);
+    for (let i = 0; i < 6 && next === old && typeById[slot.def.pick.slice(0, -2)].variants.length > 1; i++) next = resolvePick(slot.def.pick, r);
+    slot.pick = next;
+  }
   return fillSnapshot(slot);
 }
 // next/previous variant while choosing by hand: keeps the type, changes the numbers
 export function reseed(slot, seed = newSeed()) { slot.seed = seed; slot.edits = null; return fillSnapshot(slot); }
 export function setFlags(slot, flags) { slot.flags = { ...(slot.flags || {}), ...flags }; return fillSnapshot(slot); }
 // choose a specific type/variant by hand: the slot becomes a fixed slot
+// Apply a choice from the picker. fixedPick ('typeId:*') means "any option of this type"; pick is the concrete example shown.
+export function applyChoice(slot, { pick, fixedPick = null, seed, flags = null }) {
+  slot.def = { mode: 'fixed', pick: fixedPick || pick };
+  slot.pick = pick; slot.seed = seed; slot.edits = null; slot.marksManual = []; slot.linesManual = []; slot.flags = flags || null;
+  return fillSnapshot(slot);
+}
 export function setPick(slot, pick) {
   slot.def = { mode: 'fixed', pick };
   slot.pick = pick; slot.seed = newSeed(); slot.edits = null; slot.marksManual = []; slot.linesManual = []; slot.flags = null;

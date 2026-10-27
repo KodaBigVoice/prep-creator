@@ -146,7 +146,7 @@ export function openPicker({ title = 'Choose a question', current = null, confir
     else if (st.topic) scope = [...new Set(lvAll().filter(x => x.topic === st.topic).map(x => x.typeId))].map(id => `${id}:*`);
     else scope = [];
     m.close();
-    onPick({ pick: e.key, seed: st.seed, flags: st.flags && t.integer ? st.flags : null, scope });
+    onPick({ pick: e.key, fixedPick: (!st.opt && st.type) ? `${st.type}:*` : null, seed: st.seed, flags: st.flags && t.integer ? st.flags : null, scope });
   }
 
   const body = h('div', {},

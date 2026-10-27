@@ -128,7 +128,7 @@ export function openSavePreset() {
   footer: [h('button', { class: 'btn', onClick: () => m.close() }, 'Cancel'), h('button', { class: 'btn primary', onClick: () => {
     const nm = name.value.trim(); if (!nm) return;
     const slotDef = (s) => {
-      const base = s.def.mode === 'pool' ? { mode: 'pool', label: s.def.label, candidates: s.def.candidates.map(c => ({ ...c })) } : { mode: 'fixed', pick: s.pick };
+      const base = s.def.mode === 'pool' ? { mode: 'pool', label: s.def.label, candidates: s.def.candidates.map(c => ({ ...c })) } : { mode: 'fixed', pick: s.def.pick || s.pick };
       base.marks = s.marks.slice(); base.lines = s.lines.slice();
       return base;
     };

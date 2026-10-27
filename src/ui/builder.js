@@ -65,7 +65,7 @@ export function renderBuilder(root) {
     root.append(card);
   });
   root.append(h('div', { class: 'addrow' },
-    h('button', { class: 'btn', onClick: () => openPicker({ title: 'Add a question', confirmLabel: 'Add question', onPick: ({ pick, seed, flags }) => { const q = P.addQuestion(prep, pick); const s = q.slots[0]; s.seed = seed; if (flags) s.flags = flags; P.reseed(s, seed); ctx.ui.sel = { q: prep.questions.length - 1, k: 0 }; ctx.commit(); } }) }, '+ Add question')));
+    h('button', { class: 'btn', onClick: () => openPicker({ title: 'Add a question', confirmLabel: 'Add question', onPick: (c) => { const q = P.addQuestion(prep, c.pick); P.applyChoice(q.slots[0], c); ctx.ui.sel = { q: prep.questions.length - 1, k: 0 }; ctx.commit(); } }) }, '+ Add question')));
 }
 
 // The panel under a selected row: what the question is, and everything you can do with it.
@@ -76,9 +76,11 @@ function detailPanel(q, qi, slot, si, cq, part) {
   const flagsInt = slot.flags ? slot.flags.integer !== false : true;
   const btn = (label, fn, opts = {}) => h('button', { class: 'btn small' + (opts.danger ? ' danger' : ''), disabled: opts.disabled, title: opts.title, onClick: fn }, label);
   const isPool = slot.def.mode === 'pool';
-  const pickLine = pickName(slot.pick);
+  const anyOpt = slot.def.mode === 'fixed' && slot.def.pick && slot.def.pick.endsWith(':*');
+  const pickLine = anyOpt ? pickName(slot.def.pick) + ' › any option' : pickName(slot.pick);
   return h('div', { class: 'detail' },
     h('div', { class: 'dpath' }, h('b', {}, pickLine), isPool ? h('span', { class: 'tag pool' }, 'pool') : null, slot.meta && slot.meta.multipart ? h('span', { class: 'tag' }, 'multipart') : null, slot.locked ? h('span', { class: 'tag lock' }, 'locked') : null),
+    anyOpt ? h('div', { class: 'hint' }, `A different option comes up each time you re-roll. This one is: ${slot.meta.label}.`) : null,
     range ? h('div', { class: 'hint' }, range) : null,
     h('div', { class: 'dbtns' },
       btn('Change question…', () => changeSlot(q, qi, slot)),
@@ -88,6 +90,7 @@ function detailPanel(q, qi, slot, si, cq, part) {
       btn(slot.locked ? 'Unlock' : 'Lock', () => { slot.locked = !slot.locked; ctx.commit(); }, { title: 'A locked question is not changed by re-roll' }),
       isPool ? btn('Pool choices…', () => openPoolDialog(slot, qi, si)) : btn('Make this a pool…', () => { slot.def = { mode: 'pool', label: 'Pool', candidates: [{ pick: slot.pick, on: true }] }; ctx.commit(); openPoolDialog(slot, qi, si); }),
       isPool ? btn('Make fixed', () => { slot.def = { mode: 'fixed', pick: slot.pick }; ctx.commit(); }) : null,
+      anyOpt ? btn('Keep this option', () => { slot.def = { mode: 'fixed', pick: slot.pick }; ctx.commit(); }, { title: 'Stop changing option when you re-roll' }) : null,
       btn('Reset marks and lines', () => { slot.marksManual = slot.marksManual.map(() => false); slot.linesManual = slot.linesManual.map(() => false); P.reseed(slot, slot.seed); ctx.commit(); }),
       cq.parts.length > 1 || prep.questions.length > 0 ? btn('Remove', () => { P.removeSlot(prep, qi, si); ctx.ui.sel = null; ctx.commit(); }, { danger: true }) : null),
     slot.meta.integer ? h('label', { class: 'dint' }, h('input', { type: 'checkbox', checked: flagsInt, onChange: () => { P.setFlags(slot, { integer: !flagsInt }); ctx.commit(); } }), ' Integer answers only') : null);
@@ -108,13 +111,13 @@ async function rerollAll() {
   ctx.commit();
 }
 function changeSlot(q, qi, slot) {
-  openPicker({ title: `Choose a question for ${qi + 1}`, current: slot.pick, onPick: ({ pick, seed, flags }) => {
-    P.setPick(slot, pick); slot.seed = seed; if (flags) slot.flags = flags; P.reseed(slot, seed); ctx.commit();
+  openPicker({ title: `Choose a question for ${qi + 1}`, current: slot.pick, onPick: (c) => {
+    P.applyChoice(slot, c); ctx.commit();
   } });
 }
 function addPart(qi) {
   const prep = ctx.prep, q = prep.questions[qi];
-  openPicker({ title: `Add a part to question ${qi + 1}`, confirmLabel: 'Add part', onPick: ({ pick, seed, flags }) => {
-    const s = P.addSlotToQuestion(prep, q, pick); if (flags) s.flags = flags; P.reseed(s, seed); ctx.commit();
+  openPicker({ title: `Add a part to question ${qi + 1}`, confirmLabel: 'Add part', onPick: (c) => {
+    const s = P.addSlotToQuestion(prep, q, c.pick); P.applyChoice(s, c); ctx.commit();
   } });
 }
