@@ -323,11 +323,13 @@ function setZoom(z, cx = null, cy = null) {
 }
 function setFit(m) { store.settings.fitMode = m; ctx.ui.zoom = 'fit'; ctx.save(); relayout(); }
 const zoomBar = h('span', { class: 'zoombar' });
+const fitBar = h('span', { class: 'zoombar' });
 function drawZoomBar() {
   setKids(zoomBar,
     h('button', { class: 'iconbtn', title: 'Zoom out (Ctrl + scroll down)', onClick: () => setZoom(zoomNow() / 1.15) }, '−'),
     h('button', { class: 'zoompct', title: 'Click for 100%', onClick: () => setZoom(1) }, `${Math.round(zoomNow() * 100)}%`),
-    h('button', { class: 'iconbtn', title: 'Zoom in (Ctrl + scroll up)', onClick: () => setZoom(zoomNow() * 1.15) }, '+'),
+    h('button', { class: 'iconbtn', title: 'Zoom in (Ctrl + scroll up)', onClick: () => setZoom(zoomNow() * 1.15) }, '+'));
+  setKids(fitBar,
     h('button', { class: 'btn small', 'data-menu-anchor': '', title: 'Fit the page in the window', onClick: (e) => showMenu(e.currentTarget, [
       { label: 'Fit width', checked: fitMode() === 'w', onClick: () => setFit('w') },
       { label: 'Fit height', sub: 'Shows a whole page at once', checked: fitMode() === 'h', onClick: () => setFit('h') }]) }, 'Fit ▾'));
@@ -366,7 +368,9 @@ function relayout() {
       setKids(pvTop,
         zoomBar,
         ...(lay.info.warnings || []).map(w => h('span', { class: 'warn' }, w.text)),
-        lay.info.overfull ? h('span', { class: 'warn' }, 'Too much for the page at 10 pt: it has spilled over.') : null);
+        lay.info.overfull ? h('span', { class: 'warn' }, 'Too much for the page at 10 pt: it has spilled over.') : null,
+        h('span', { class: 'pvinfo' }),
+        fitBar);
     } catch (e) { console.error(e); setKids(pvTop, h('span', { class: 'err' }, 'Layout error: ' + e.message)); }
   });
 }
