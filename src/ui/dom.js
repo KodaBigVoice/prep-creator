@@ -24,12 +24,16 @@ document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeMenu(
 
 // items: [{label, onClick, danger, disabled}] | {sep:true} | {heading:'text'}
 export function showMenu(anchor, items) {
+  const same = openMenu && openMenu._anchor === anchor;
   closeMenu();
+  if (same) return;
   const m = h('div', { class: 'menu' });
   for (const it of items) {
     if (it.sep) m.append(h('hr'));
     else if (it.heading) m.append(h('div', { class: 'lbl' }, it.heading));
-    else m.append(h('button', { class: it.danger ? 'danger' : '', disabled: it.disabled, onClick: () => { closeMenu(); it.onClick && it.onClick(); } }, it.label));
+    else if (it.note) m.append(h('div', { class: 'note' }, it.note));
+    else m.append(h('button', { class: it.danger ? 'danger' : '', disabled: it.disabled, onClick: () => { closeMenu(); it.onClick && it.onClick(); } },
+      h('span', { class: 'tick' }, it.checked ? '✓' : ''), h('span', {}, it.label), it.sub ? h('span', { class: 'msub' }, it.sub) : null));
   }
   document.body.append(m);
   const r = anchor.getBoundingClientRect();
@@ -37,6 +41,7 @@ export function showMenu(anchor, items) {
   m.style.left = Math.max(8, Math.min(window.innerWidth - w - 8, r.right - w)) + 'px';
   m.style.top = (r.bottom + hgt + 8 > window.innerHeight ? Math.max(8, r.top - hgt - 4) : r.bottom + 4) + 'px';
   anchor.setAttribute('data-menu-anchor', '');
+  m._anchor = anchor;
   openMenu = m;
 }
 

@@ -11,9 +11,10 @@ const idb = () => new Promise((res, rej) => {
 const tx = async (mode, fn) => { const db = await idb(); return new Promise((res, rej) => { const t = db.transaction(ST, mode); const req = fn(t.objectStore(ST)); t.oncomplete = () => res(req && req.result); t.onerror = () => rej(t.error); }); };
 
 export const supported = () => typeof window.showSaveFilePicker === 'function' && typeof window.showOpenFilePicker === 'function';
-export const getLinked = async () => { try { return (await tx('readonly', s => s.get(KEY))) || null; } catch (e) { return null; } };
-const remember = (hd) => tx('readwrite', s => s.put(hd, KEY));
-export const unlink = () => tx('readwrite', s => s.delete(KEY));
+let cache = null;   // the handle for this session; IndexedDB keeps it for next time
+export const getLinked = async () => { if (cache) return cache; try { cache = (await tx('readonly', s => s.get(KEY))) || null; } catch (e) { cache = null; } return cache; };
+const remember = async (hd) => { cache = hd; await tx('readwrite', s => s.put(hd, KEY)); };
+export const unlink = async () => { cache = null; await tx('readwrite', s => s.delete(KEY)); };
 
 export async function linkNew() {
   const hd = await window.showSaveFilePicker({ suggestedName: 'Prep Creator history.json', types: TYPES });

@@ -38,17 +38,48 @@ function savePrep(quiet = false) {
   const i = store.preps.findIndex(p => p.id === prep.id);
   const copy = JSON.parse(JSON.stringify(prep));
   if (i >= 0) store.preps[i] = copy; else store.preps.push(copy);
-  ctx.dirty = false; ctx.save(); ctx.hooks.status();
-  if (!quiet) toast(`Saved “${prep.name}”.`);
+  ctx.dirty = false; ctx.ui.savedTo = 'browser'; ctx.save(); ctx.hooks.status();
+  if (!quiet) toast(`Saved “${prep.name}” in this browser.`);
 }
-async function saveClicked() {
+const saveMode = () => store.settings.saveMode || 'browser';
+const printMode = () => store.settings.printMode || 'q';
+// Save: always keeps the browser copy; 'file' also writes the linked JSON file (asking for one the first time)
+async function doSave(kind = saveMode()) {
   savePrep(true);
-  let hd = null; try { hd = FL.supported() ? await FL.getLinked() : null; } catch (e) { hd = null; }
-  if (hd) {
-    try { await FL.writeLinked(hd, exportText(store)); toast(`Saved “${ctx.prep.name}” and updated ${hd.name}.`); }
-    catch (e) { toast(`Saved in this browser, but the file was not updated: ${e.message}`, 6000); }
-  } else toast(`Saved “${ctx.prep.name}”.`);
+  store.settings.saveMode = kind;
+  if (kind === 'file') {
+    try {
+      const how = await saveToFile();
+      ctx.ui.savedTo = how;
+      toast(how === 'file' ? `Saved to ${linkedName || 'the JSON file'}.` : 'This browser cannot keep a file linked, so a JSON copy was downloaded.', 4000);
+    } catch (e) {
+      if (e && e.name === 'AbortError') toast('Saved in this browser. No file was chosen.', 4000);
+      else toast(`Saved in this browser, but the file was not updated: ${e.message}`, 6000);
+    }
+  } else toast(`Saved “${ctx.prep.name}” in this browser.`);
+  ctx.save(); renderToolbar();
   if (ctx.ui.tab === 'history') renderSidebar();
+}
+let linkedName = '';
+async function refreshLinked() { try { const hd = FL.supported() ? await FL.getLinked() : null; linkedName = hd ? hd.name : ''; } catch (e) { linkedName = ''; } }
+async function saveToFile() {
+  if (!FL.supported()) { download(`Prep Creator history ${new Date().toISOString().slice(0, 10)}.json`, exportText(store)); return 'download'; }
+  let hd = await FL.getLinked();
+  if (!hd) {
+    hd = await FL.linkNew();
+    try { const old = await (await hd.getFile()).text(); if (old.trim()) importText(store, old); } catch (e) { /* new or unreadable file: just write ours */ }
+  }
+  await FL.writeLinked(hd, exportText(store));
+  linkedName = hd.name;
+  return 'file';
+}
+function saveMenu(anchor) {
+  showMenu(anchor, [
+    { label: 'Save in browser', sub: 'Kept on this computer automatically', checked: saveMode() === 'browser', onClick: () => doSave('browser') },
+    { label: linkedName ? `Save to JSON file` : 'Save to JSON file…', sub: linkedName ? `Updates ${linkedName}` : 'Choose where to keep your history file', checked: saveMode() === 'file', onClick: () => doSave('file') },
+    ...(linkedName ? [{ label: 'Use a different JSON file…', onClick: async () => { await FL.unlink(); linkedName = ''; doSave('file'); } }] : []),
+    { sep: true }, { note: 'The Save button repeats whichever of these you used last.' },
+  ]);
 }
 // Ask before anything that swaps the prep on screen for a different one
 async function confirmReplace(title, message, label) {
@@ -78,7 +109,8 @@ ctx.ui.afterLoad = () => { ctx.ui.sel = null; ctx.commit({ toolbar: true }); ctx
 // ---------- top toolbar ----------
 const toolbar = h('div', { class: 'toolbar' });
 const saveStat = h('span', { class: 'savestat' });
-ctx.hooks.status = () => { saveStat.textContent = ctx.dirty ? 'Unsaved changes' : 'All changes saved'; saveStat.classList.toggle('dirty', !!ctx.dirty); };
+const SAVED_TEXT = { browser: 'Saved in browser', file: 'Saved to JSON file', download: 'JSON file downloaded' };
+ctx.hooks.status = () => { saveStat.textContent = ctx.dirty ? 'Unsaved changes' : (SAVED_TEXT[ctx.ui.savedTo] || SAVED_TEXT.browser); saveStat.classList.toggle('dirty', !!ctx.dirty); };
 function renderToolbar() {
   const prep = ctx.prep;
   const nameIn = h('input', { type: 'text', class: 'namebox', value: prep.name, 'aria-label': 'Prep name', onInput: (e) => { prep.name = e.target.value; prep.nameAuto = false; ctx.commit({ builder: false }); } });
@@ -91,10 +123,14 @@ function renderToolbar() {
     seg([['qo', 'Prep style'], ['aos', 'Exam style']]),
     h('span', { class: 'sp' }),
     saveStat,
-    h('button', { class: 'btn', onClick: saveClicked, title: 'Save this prep (and update your linked file, if you have one)' }, 'Save'),
+    h('span', { class: 'splitbtn' },
+      h('button', { class: 'btn', onClick: () => doSave(), title: saveMode() === 'file' ? 'Save to the JSON file (and in this browser)' : 'Save in this browser' }, 'Save'),
+      h('button', { class: 'btn arrow', 'aria-label': 'Save options', onClick: (e) => saveMenu(e.currentTarget) }, '▾')),
     h('button', { class: 'btn', 'data-menu-anchor': '', onClick: (e) => newMenu(e.currentTarget) }, 'New ▾'),
     h('span', { class: 'divider' }),
-    h('button', { class: 'btn primary printbtn', 'data-menu-anchor': '', onClick: (e) => togglePrintPanel(e.currentTarget) }, 'Print…'));
+    h('span', { class: 'splitbtn' },
+      h('button', { class: 'btn primary printbtn', onClick: () => doPrint(), title: 'Print or save as PDF' }, PRINT_LABEL[printMode()]),
+      h('button', { class: 'btn primary arrow', 'aria-label': 'Print options', onClick: (e) => printMenu(e.currentTarget) }, '▾')));
   ctx.hooks.status();
 }
 function newMenu(anchor) {
@@ -109,33 +145,26 @@ function toggleSidebar() {
   applyWidths(); renderToolbar(); ctx.save(); relayout();
 }
 
-// ---------- print panel ----------
-function togglePrintPanel(anchor) {
-  if (ctx.ui.pop) { closePop(); return; }
-  const L = ctx.layout;
-  const pop = h('div', { class: 'pop' },
-    h('h3', {}, 'Print or save as PDF'),
-    h('div', { class: 'line' }, h('button', { class: 'btn primary', onClick: () => { closePop(); printQuestions(); } }, L.mode === 'aos' ? 'Exam-style PDF' : 'Prep-style PDF'),
-      h('button', { class: 'btn', onClick: () => { closePop(); printAnswers(); } }, 'Answers PDF')),
-    h('div', { class: 'hint' }, 'In the print window choose Save as PDF, A4, margins “None”, scale 100%, and headers and footers off.'));
-  document.body.append(pop); ctx.ui.pop = pop;
-  const close = (e) => { if (!pop.contains(e.target) && !e.target.closest('[data-menu-anchor]')) closePop(); };
-  setTimeout(() => document.addEventListener('mousedown', close, { once: true }), 0);
+// ---------- printing ----------
+const PRINT_LABEL = { q: 'Print questions', a: 'Print answers', both: 'Print questions + answers' };
+function printMenu(anchor) {
+  showMenu(anchor, [
+    { label: 'Questions only', checked: printMode() === 'q', onClick: () => doPrint('q') },
+    { label: 'Answers only', checked: printMode() === 'a', onClick: () => doPrint('a') },
+    { label: 'Questions and answers', sub: 'Answers follow the questions in one PDF', checked: printMode() === 'both', onClick: () => doPrint('both') },
+    { sep: true }, { note: 'In the print window choose Save as PDF, A4, margins “None”, scale 100%, and headers and footers off.' },
+  ]);
 }
-function closePop() { if (ctx.ui.pop) { ctx.ui.pop.remove(); ctx.ui.pop = null; } }
-function printQuestions() {
-  savePrep(true);
-  const t = document.title; document.title = ctx.prep.name;
-  window.print(); document.title = t;
-}
-function printAnswers() {
-  savePrep(true);
-  const pages = buildAnswerPages(ctx.prep, ctx.katex, ctx.layout);
-  $('#print-answers').innerHTML = pages.join('');
-  document.body.classList.add('printing-answers');
-  const t = document.title; document.title = `${ctx.prep.name} – Answers`;
-  const done = () => { document.body.classList.remove('printing-answers'); document.title = t; window.removeEventListener('afterprint', done); };
-  window.addEventListener('afterprint', done);
+function doPrint(kind = printMode()) {
+  store.settings.printMode = kind; ctx.save();
+  savePrep(true); renderToolbar();
+  const t = document.title;
+  const restore = () => { document.body.classList.remove('printing-answers', 'printing-both'); document.title = t; window.removeEventListener('afterprint', restore); };
+  if (kind === 'q') { document.title = ctx.prep.name; window.print(); document.title = t; return; }
+  $('#print-answers').innerHTML = buildAnswerPages(ctx.prep, ctx.katex, ctx.layout).join('');
+  document.body.classList.add(kind === 'a' ? 'printing-answers' : 'printing-both');
+  document.title = kind === 'a' ? `${ctx.prep.name} – Answers` : ctx.prep.name;
+  window.addEventListener('afterprint', restore);
   window.print();
 }
 
@@ -214,6 +243,7 @@ function tabLayout(el) {
 function tabHistory(el) {
   const linkBox = h('div', { class: 'linkbox' });
   const drawLink = async () => {
+    await refreshLinked();
     if (!FL.supported()) { setKids(linkBox, h('div', { class: 'hint' }, 'This browser cannot keep a file up to date automatically. Use Download and Open below.')); return; }
     const hd = await FL.getLinked();
     if (hd) {
@@ -350,6 +380,7 @@ function init() {
   if (ctx.prep.rubricOn === undefined) ctx.prep.rubricOn = false;
   ctx.ui.sidebar = !!store.settings.sidebar;
   applyWidths(); renderToolbar(); renderSidebar(); renderBuilder(builderEl); relayout();
+  refreshLinked().then(renderToolbar);
   document.fonts && document.fonts.ready.then(() => relayout());
   window.addEventListener('resize', () => { applyWidths(); relayout(); });
   window.addEventListener('beforeunload', () => { try { localStorage.setItem('prepCreator.v1', JSON.stringify(store)); } catch (e) { /* ignore */ } });
