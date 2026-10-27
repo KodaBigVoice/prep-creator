@@ -1,4 +1,4 @@
-import { h, modal, toast, download, setKids } from './dom.js';
+import { h, modal, toast, download, setKids, confirmBox } from './dom.js';
 import { ctx } from './state.js';
 import { openPicker } from './picker.js';
 import { mathToHTML } from '../layout/render.js';
@@ -103,12 +103,15 @@ export function openHistory() {
         rows.length ? h('table', { class: 'tbl' }, h('thead', {}, h('tr', {}, h('th', {}, 'Name'), h('th', {}, 'Set'), h('th', {}, 'Saved'), h('th', {}))),
           h('tbody', {}, rows.map(p => h('tr', {}, h('td', {}, p.name), h('td', {}, p.set), h('td', {}, (p.saved || '').slice(0, 10)),
             h('td', { style: { textAlign: 'right', whiteSpace: 'nowrap' } },
-              h('button', { class: 'btn small', onClick: () => { ctx.prep = JSON.parse(JSON.stringify(p)); ctx.ui.afterLoad && ctx.ui.afterLoad(); m.close(); } }, 'Open'), ' ',
-              h('button', { class: 'btn small danger', onClick: () => { st.preps = st.preps.filter(x => x.id !== p.id); ctx.save(); draw(); } }, 'Delete')))))) : h('div', { class: 'empty' }, 'Nothing saved for this set yet. Preps are saved when you press Save or print.'));
+              h('button', { class: 'btn small', onClick: async () => {
+                if (ctx.prep.questions.length && ctx.prep.id !== p.id && !(await confirmBox({ title: 'Open this prep?', message: [`This replaces “${ctx.prep.name}” on screen with “${p.name}”.`, 'Your current prep is saved to History first.'], confirmLabel: 'Open' }))) return;
+                if (ctx.prep.id !== p.id && ctx.dirty) { const cur = JSON.parse(JSON.stringify(ctx.prep)); cur.saved = new Date().toISOString(); const i = st.preps.findIndex(x => x.id === cur.id); if (i >= 0) st.preps[i] = cur; else if (cur.questions.length) st.preps.push(cur); }
+                ctx.prep = JSON.parse(JSON.stringify(p)); ctx.ui.afterLoad && ctx.ui.afterLoad(); m.close(); } }, 'Open'), ' ',
+              h('button', { class: 'btn small danger', onClick: async () => { if (!(await confirmBox({ title: 'Delete this saved prep?', message: `“${p.name}” will be removed from History. This cannot be undone.`, confirmLabel: 'Delete', danger: true }))) return; st.preps = st.preps.filter(x => x.id !== p.id); ctx.save(); draw(); } }, 'Delete')))))) : h('div', { class: 'empty' }, 'Nothing saved for this set yet. Preps are saved when you press Save or print.'));
     } else {
       const rows = st.presets;
       content = rows.length ? h('table', { class: 'tbl' }, h('thead', {}, h('tr', {}, h('th', {}, 'Preset'), h('th', {}, 'Set'), h('th', {}))),
-        h('tbody', {}, rows.map(p => h('tr', {}, h('td', {}, p.name), h('td', {}, p.set), h('td', { style: { textAlign: 'right' } }, h('button', { class: 'btn small danger', onClick: () => { st.presets = st.presets.filter(x => x.id !== p.id); ctx.save(); draw(); ctx.hooks.toolbar(); } }, 'Delete')))))) : h('div', { class: 'empty' }, 'You have not saved any presets yet. Build a prep, then use + ▸ Save as preset.');
+        h('tbody', {}, rows.map(p => h('tr', {}, h('td', {}, p.name), h('td', {}, p.set), h('td', { style: { textAlign: 'right' } }, h('button', { class: 'btn small danger', onClick: async () => { if (!(await confirmBox({ title: 'Delete this preset?', message: `The preset “${p.name}” will be removed. This cannot be undone.`, confirmLabel: 'Delete', danger: true }))) return; st.presets = st.presets.filter(x => x.id !== p.id); ctx.save(); draw(); ctx.hooks.toolbar(); } }, 'Delete')))))) : h('div', { class: 'empty' }, 'You have not saved any presets yet. Build a prep, then use + ▸ Save as preset.');
     }
     setKids(area, top, content);
   };

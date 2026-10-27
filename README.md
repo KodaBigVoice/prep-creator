@@ -15,7 +15,7 @@ To try it on your own computer first: in this folder run `python3 -m http.server
 
 ## Printing
 
-Press **Print…** in the app, then **Print questions PDF** (or **Print answer-on-sheet PDF**, or **Print answers PDF**). In the Edge print window choose: Destination **Save as PDF**, Paper size **A4**, Margins **None**, Scale **100**, and turn **Headers and footers** off.
+Press **Print…** in the app, then **Prep-style PDF** (or **Exam-style PDF**, or **Answers PDF**). In the Edge print window choose: Destination **Save as PDF**, Paper size **A4**, Margins **None**, Scale **100**, and turn **Headers and footers** off.
 
 ## Your history file
 

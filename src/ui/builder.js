@@ -1,4 +1,4 @@
-import { h, toast } from './dom.js';
+import { h, toast, confirmBox } from './dom.js';
 import { ctx } from './state.js';
 import { composeQuestion } from '../layout/compose.js';
 import { mathToHTML } from '../layout/render.js';
@@ -6,6 +6,8 @@ import { openPicker } from './picker.js';
 import { openPoolDialog, openEditDialog, pickName } from './dialogs.js';
 import * as P from '../data/prep.js';
 
+const ICON_UP = '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 2.5h10M8 13.5V6M4.8 8.7 8 5.5l3.2 3.2"/></svg>';
+const ICON_DOWN = '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 13.5h10M8 2.5V10M4.8 7.3 8 10.5l3.2-3.2"/></svg>';
 const fmt = (n) => (Math.round(n * 100) / 100).toString();
 
 function stepper({ value, onChange, step = 1, min = 0, manual = false, title }) {
@@ -38,6 +40,9 @@ export function renderBuilder(root) {
         q.slots.some(s => s.locked) ? h('span', { class: 'lockmark', title: 'Locked' }, '🔒') : null,
         h('span', { class: 'sp' }),
         h('span', { class: 'acts' },
+          h('button', { class: 'iconbtn', title: 'Make this a further part of the question above', disabled: qi === 0, html: ICON_UP, onClick: () => joinQuestion(qi, -1) }),
+          h('button', { class: 'iconbtn', title: 'Make this the first part of the question below', disabled: qi === prep.questions.length - 1, html: ICON_DOWN, onClick: () => joinQuestion(qi, 1) }),
+          h('span', { class: 'acts-sep' }),
           h('button', { class: 'iconbtn', title: 'Move up', onClick: () => { P.moveQuestion(prep, qi, -1); ctx.ui.sel = sel && sel.q === qi ? { ...sel, q: Math.max(0, qi - 1) } : null; ctx.commit(); } }, '↑'),
           h('button', { class: 'iconbtn', title: 'Move down', onClick: () => { P.moveQuestion(prep, qi, 1); ctx.ui.sel = sel && sel.q === qi ? { ...sel, q: Math.min(prep.questions.length - 1, qi + 1) } : null; ctx.commit(); } }, '↓'),
           h('button', { class: 'iconbtn', title: 'Remove this question', onClick: () => { prep.questions.splice(qi, 1); ctx.ui.sel = null; ctx.commit(); } }, '✕'))));
@@ -79,6 +84,7 @@ function detailPanel(q, qi, slot, si, cq, part) {
       btn('Change question…', () => changeSlot(q, qi, slot)),
       btn('Edit wording or answer…', () => openEditDialog(slot, () => ctx.commit())),
       btn('+ Add a part', () => addPart(qi)),
+      q.slots.length > 1 ? btn('Make this its own question', () => { const nq = P.splitSlot(prep, qi, si); ctx.ui.sel = nq === null ? null : { q: nq, k: 0 }; ctx.commit(); }, { title: 'Take this out of the multipart question and give it its own number' }) : null,
       btn(slot.locked ? 'Unlock' : 'Lock', () => { slot.locked = !slot.locked; ctx.commit(); }, { title: 'A locked question is not changed by re-roll' }),
       isPool ? btn('Pool choices…', () => openPoolDialog(slot, qi, si)) : btn('Make this a pool…', () => { slot.def = { mode: 'pool', label: 'Pool', candidates: [{ pick: slot.pick, on: true }] }; ctx.commit(); openPoolDialog(slot, qi, si); }),
       isPool ? btn('Make fixed', () => { slot.def = { mode: 'fixed', pick: slot.pick }; ctx.commit(); }) : null,
@@ -87,8 +93,17 @@ function detailPanel(q, qi, slot, si, cq, part) {
     slot.meta.integer ? h('label', { class: 'dint' }, h('input', { type: 'checkbox', checked: flagsInt, onChange: () => { P.setFlags(slot, { integer: !flagsInt }); ctx.commit(); } }), ' Integer answers only') : null);
 }
 
-function rerollAll() {
+function joinQuestion(qi, dir) {
   const prep = ctx.prep;
+  const r = P.mergeQuestion(prep, qi, dir); if (!r) return;
+  const cq = composeQuestion(prep.questions[r.q], r.q + 1);
+  const k = Math.max(0, cq.parts.findIndex(p => p.si === r.firstSlot));
+  ctx.ui.sel = { q: r.q, k };
+  ctx.commit();
+}
+async function rerollAll() {
+  const prep = ctx.prep;
+  if (!(await confirmBox({ title: 'Re-roll every question?', message: 'Every question that is not locked gets new numbers. The current numbers cannot be brought back.', confirmLabel: 'Re-roll all' }))) return;
   prep.questions.forEach(q => q.slots.forEach(s => P.rerollSlot(prep, s)));
   ctx.commit();
 }

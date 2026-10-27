@@ -48,3 +48,5 @@
 @page{size:A4;margin:0}
 
 .mblock{display:block}.mblock .katex-display{margin:.5mm 0 .8mm;text-align:left}.mblock .katex-display>.katex{text-align:left}
+
+.sheet.qo .mk{color:#6b6b6b}

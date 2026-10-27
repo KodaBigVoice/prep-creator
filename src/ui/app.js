@@ -1,4 +1,4 @@
-import { h, $, showMenu, toast, setKids, download } from './dom.js';
+import { h, $, showMenu, toast, setKids, download, confirmBox } from './dom.js';
 import { ctx } from './state.js';
 import { loadStore, saveStoreSoon, exportText, importText } from '../data/store.js';
 import { SETS, setById, defaultRubric } from '../data/sets.js';
@@ -50,6 +50,12 @@ async function saveClicked() {
   } else toast(`Saved “${ctx.prep.name}”.`);
   if (ctx.ui.tab === 'history') renderSidebar();
 }
+// Ask before anything that swaps the prep on screen for a different one
+async function confirmReplace(title, message, label) {
+  const prep = ctx.prep;
+  if (!prep || !prep.questions.length) return true;
+  return confirmBox({ title, message: [message, `“${prep.name}” is saved to History first, so you can open it again from there.`], confirmLabel: label });
+}
 function autosavePrevious() { if (ctx.prep && ctx.dirty && ctx.prep.questions.length) savePrep(true); }
 
 // ---------- starting a prep ----------
@@ -76,17 +82,31 @@ ctx.hooks.status = () => { saveStat.textContent = ctx.dirty ? 'Unsaved changes' 
 function renderToolbar() {
   const prep = ctx.prep;
   const nameIn = h('input', { type: 'text', class: 'namebox', value: prep.name, 'aria-label': 'Prep name', onInput: (e) => { prep.name = e.target.value; prep.nameAuto = false; ctx.commit({ builder: false }); } });
-  const seg = (items) => h('div', { class: 'seg', role: 'radiogroup', 'aria-label': 'Print mode' }, items.map(([val, label]) => h('button', { role: 'radio', 'aria-checked': ctx.layout.mode === val, onClick: () => { ctx.layout.mode = val; ctx.commit({ toolbar: true, dirty: false }); } }, label)));
+  const seg = (items) => h('div', { class: 'seg', role: 'radiogroup', 'aria-label': 'Print style' }, items.map(([val, label]) => h('button', { role: 'radio', 'aria-checked': ctx.layout.mode === val, onClick: () => { ctx.layout.mode = val; ctx.commit({ toolbar: true, dirty: false }); } }, label)));
   setKids(toolbar,
+    h('button', { class: 'iconbtn hamburger', 'aria-label': 'Options', 'aria-pressed': !!ctx.ui.sidebar, title: ctx.ui.sidebar ? 'Hide the options panel' : 'Show the options panel', onClick: toggleSidebar },
+      h('span', { html: '<svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 5h12M3 9h12M3 13h12"/></svg>' })),
     h('span', { class: 'brand' }, 'Prep Creator'),
     h('div', { class: 'field' }, h('label', {}, 'Name'), nameIn),
-    seg([['qo', 'Questions only'], ['aos', 'Answer on sheet']]),
+    seg([['qo', 'Prep style'], ['aos', 'Exam style']]),
     h('span', { class: 'sp' }),
     saveStat,
     h('button', { class: 'btn', onClick: saveClicked, title: 'Save this prep (and update your linked file, if you have one)' }, 'Save'),
+    h('button', { class: 'btn', 'data-menu-anchor': '', onClick: (e) => newMenu(e.currentTarget) }, 'New ▾'),
     h('span', { class: 'divider' }),
     h('button', { class: 'btn primary printbtn', 'data-menu-anchor': '', onClick: (e) => togglePrintPanel(e.currentTarget) }, 'Print…'));
   ctx.hooks.status();
+}
+function newMenu(anchor) {
+  const prep = ctx.prep;
+  showMenu(anchor, [
+    { label: 'New blank prep', onClick: async () => { if (await confirmReplace('Start a blank prep?', `This replaces “${prep.name}” on screen with an empty prep.`, 'Start blank prep')) blankFor(prep.set); } },
+    { label: 'New random prep', onClick: async () => { if (await confirmReplace('Start a random prep?', `This replaces “${prep.name}” on screen with a randomly chosen prep.`, 'Make random prep')) randomFor(prep.set); } },
+  ]);
+}
+function toggleSidebar() {
+  ctx.ui.sidebar = !ctx.ui.sidebar; store.settings.sidebar = ctx.ui.sidebar;
+  applyWidths(); renderToolbar(); ctx.save(); relayout();
 }
 
 // ---------- print panel ----------
@@ -95,7 +115,7 @@ function togglePrintPanel(anchor) {
   const L = ctx.layout;
   const pop = h('div', { class: 'pop' },
     h('h3', {}, 'Print or save as PDF'),
-    h('div', { class: 'line' }, h('button', { class: 'btn primary', onClick: () => { closePop(); printQuestions(); } }, L.mode === 'aos' ? 'Answer-on-sheet PDF' : 'Questions PDF'),
+    h('div', { class: 'line' }, h('button', { class: 'btn primary', onClick: () => { closePop(); printQuestions(); } }, L.mode === 'aos' ? 'Exam-style PDF' : 'Prep-style PDF'),
       h('button', { class: 'btn', onClick: () => { closePop(); printAnswers(); } }, 'Answers PDF')),
     h('div', { class: 'hint' }, 'In the print window choose Save as PDF, A4, margins “None”, scale 100%, and headers and footers off.'));
   document.body.append(pop); ctx.ui.pop = pop;
@@ -132,36 +152,34 @@ function renderSidebar() {
 function tabPresets(el) {
   const prep = ctx.prep;
   const presets = presetsFor(prep.set);
-  const setSel = h('select', { 'aria-label': 'Set', onChange: (e) => useSet(e.target.value) }, SETS.map(s => h('option', { value: s.id, selected: s.id === prep.set }, s.id)));
-  const presetSel = h('select', { 'aria-label': 'Preset', onChange: (e) => { if (e.target.value) useSet(prep.set, e.target.value); } },
+  const setSel = h('select', { 'aria-label': 'Set', onChange: async (e) => {
+    const v = e.target.value;
+    if (await confirmReplace(`Switch to ${v}?`, `This replaces “${prep.name}” on screen with a new ${v} prep.`, 'Switch set')) useSet(v); else renderSidebar();
+  } }, SETS.map(s => h('option', { value: s.id, selected: s.id === prep.set }, s.id)));
+  const presetSel = h('select', { 'aria-label': 'Preset', onChange: async (e) => {
+    const v = e.target.value; if (!v) return;
+    const nm = (findPreset(v) || {}).name || 'this preset';
+    if (await confirmReplace('Use this preset?', `This replaces “${prep.name}” on screen with a new prep from “${nm}”.`, 'Use preset')) useSet(prep.set, v); else renderSidebar();
+  } },
     h('option', { value: '' }, presets.length ? 'Choose a preset…' : 'No preset for this set yet'),
     presets.map(p => h('option', { value: p.id, selected: p.id === prep.presetId }, p.name + (p.starter ? '' : ' ★'))));
   setKids(el,
     h('label', { class: 'fl' }, 'Set', setSel),
     h('label', { class: 'fl' }, 'Preset', presetSel),
-    h('div', { class: 'hint' }, 'Choosing a set or preset starts a new prep from it. Your current prep is saved first.'),
+    h('div', { class: 'hint' }, 'Choosing a set or preset starts a new prep from it.'),
     h('div', { class: 'stack' },
-      h('button', { class: 'btn', onClick: () => useSet(prep.set, prep.presetId || undefined) }, 'Start again from this preset'),
-      h('button', { class: 'btn', onClick: () => randomFor(prep.set) }, 'Random prep'),
-      h('button', { class: 'btn', onClick: () => blankFor(prep.set) }, 'Blank prep')),
+      h('button', { class: 'btn', onClick: async () => { if (await confirmReplace('Start again from this preset?', `This replaces “${prep.name}” on screen with a fresh prep from the preset.`, 'Start again')) useSet(prep.set, prep.presetId || undefined); } }, 'Start again from this preset')),
     h('hr'),
     h('div', { class: 'stack' },
-      h('button', { class: 'btn', onClick: openSavePreset }, 'Save this prep as a preset…'),
-      h('button', { class: 'btn', onClick: () => { prep.name = suggestName(setById[prep.set], store.preps); prep.nameAuto = true; ctx.commit({ toolbar: true, builder: false }); } }, 'Suggest a new name')));
+      h('button', { class: 'btn', onClick: openSavePreset }, 'Save this prep as a preset…')));
 }
 function tabRubric(el) {
   const prep = ctx.prep;
   const rub = h('textarea', { rows: 5, onInput: (e) => { prep.rubricText = e.target.value; store.settings.rubrics[prep.set] = e.target.value; ctx.commit({ builder: false }); } }, prep.rubricText);
-  const minIn = h('input', { type: 'number', min: 5, max: 90, step: 5, value: prep.minutes, style: { width: '64px' }, 'aria-label': 'Minutes', onChange: (e) => {
-    const old = defaultRubric(prep.minutes); prep.minutes = Number(e.target.value) || prep.minutes;
-    if (prep.rubricText === old || !prep.rubricText) { prep.rubricText = defaultRubric(prep.minutes); rub.value = prep.rubricText; store.settings.rubrics[prep.set] = prep.rubricText; }
-    ctx.commit({ builder: false });
-  } });
   setKids(el,
     h('label', { class: 'check' }, h('input', { type: 'checkbox', checked: prep.rubricOn, onChange: (e) => { prep.rubricOn = e.target.checked; ctx.commit({ builder: false }); } }), ' Show the rubric line under the title'),
-    h('div', { class: 'fl' }, 'Time for the prep', h('span', {}, minIn, ' minutes')),
     h('label', { class: 'fl' }, 'Rubric wording', rub),
-    h('div', { class: 'hint' }, `Saved for ${prep.set}: new preps in this set start with it. Changing the minutes updates the wording if you haven't rewritten it.`),
+    h('div', { class: 'hint' }, `Your wording is remembered for ${prep.set}, so new preps in this set start with it. The line is off until you tick the box.`),
     h('button', { class: 'btn small', onClick: () => { prep.rubricText = defaultRubric(prep.minutes); delete store.settings.rubrics[prep.set]; ctx.commit({ builder: false }); renderSidebar(); } }, 'Reset to the standard wording'));
 }
 function tabLayout(el) {
@@ -238,15 +256,16 @@ const pvTop = h('div', { class: 'pv-top' });
 const pagesEl = h('div', { id: 'pages' });
 previewEl.append(pvTop, pagesEl);
 
-const SIDE_W = 300, SPLIT_W = 8, DEFAULT_BW = 520;
+const SIDE_PX = 300, SPLIT_W = 8, DEFAULT_BW = 520;
+const sideW = () => (ctx.ui.sidebar ? SIDE_PX : 0);
 function builderWidth() {
   const w = store.settings.builderW || DEFAULT_BW;
-  return Math.max(340, Math.min(w, window.innerWidth - SIDE_W - SPLIT_W - 300));
+  return Math.max(340, Math.min(w, window.innerWidth - sideW() - SPLIT_W - 300));
 }
-function applyWidths() { main.style.gridTemplateColumns = `${SIDE_W}px ${builderWidth()}px ${SPLIT_W}px minmax(0,1fr)`; }
+function applyWidths() { sideEl.style.display = ctx.ui.sidebar ? '' : 'none'; main.style.gridTemplateColumns = `${sideW()}px ${builderWidth()}px ${SPLIT_W}px minmax(0,1fr)`; }
 splitEl.addEventListener('pointerdown', (e) => {
   e.preventDefault(); splitEl.setPointerCapture(e.pointerId); splitEl.classList.add('drag'); document.body.classList.add('resizing');
-  const move = (ev) => { store.settings.builderW = Math.round(ev.clientX - SIDE_W - SPLIT_W / 2); applyWidths(); relayout(); };
+  const move = (ev) => { store.settings.builderW = Math.round(ev.clientX - sideW() - SPLIT_W / 2); applyWidths(); relayout(); };
   const up = () => { splitEl.releasePointerCapture(e.pointerId); splitEl.classList.remove('drag'); document.body.classList.remove('resizing'); splitEl.removeEventListener('pointermove', move); splitEl.removeEventListener('pointerup', up); ctx.save(); };
   splitEl.addEventListener('pointermove', move); splitEl.addEventListener('pointerup', up);
 });
@@ -309,7 +328,7 @@ function relayout() {
       pagesEl.style.setProperty('--zoom', zoomNow().toFixed(4));
       const tm = totalMarks(lay.qs);
       drawZoomBar();
-      setKids(pvTop, h('span', { class: 'pvinfo' }, `${ctx.layout.mode === 'aos' ? 'Answer on sheet' : 'Questions only'} · ${lay.info.text} · ${tm} marks`),
+      setKids(pvTop, h('span', { class: 'pvinfo' }, `${ctx.layout.mode === 'aos' ? 'Exam style' : 'Prep style'} · ${lay.info.text} · ${tm} marks`),
         ...(lay.info.warnings || []).map(w => h('span', { class: 'warn' }, w.text)),
         lay.info.overfull ? h('span', { class: 'warn' }, 'Too much for the page at 10 pt: it has spilled over.') : null,
         zoomBar);
@@ -317,6 +336,7 @@ function relayout() {
   });
 }
 ctx.hooks.toolbar = () => { renderToolbar(); renderSidebar(); };
+ctx.ui.sidebar = false;
 ctx.hooks.builder = () => renderBuilder(builderEl);
 ctx.hooks.preview = relayout;
 
@@ -327,7 +347,8 @@ function init() {
   const last = store.settings.lastSet;
   if (store.current && store.current.questions && store.current.set && setById[store.current.set]) { ctx.prep = store.current; ctx.dirty = false; }
   else useSet(setById[last] ? last : 'Y7 Additional');
-  if (ctx.prep.rubricOn === undefined) ctx.prep.rubricOn = true;
+  if (ctx.prep.rubricOn === undefined) ctx.prep.rubricOn = false;
+  ctx.ui.sidebar = !!store.settings.sidebar;
   applyWidths(); renderToolbar(); renderSidebar(); renderBuilder(builderEl); relayout();
   document.fonts && document.fonts.ready.then(() => relayout());
   window.addEventListener('resize', () => { applyWidths(); relayout(); });

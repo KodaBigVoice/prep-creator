@@ -58,7 +58,7 @@ export function prepFromPreset(preset, setId, name, rng = makeRng(newSeed())) {
   return newPrep({ set: setId, name, minutes: preset.minutes ?? set.minutes, presetId: preset.id, rubricText: preset.rubricText, questions });
 }
 export function newPrep({ set, name, minutes, presetId = null, rubricText, questions = [] }) {
-  return { id: uid(), set, name, nameAuto: true, minutes, presetId, rubricOn: true, rubricText: rubricText || defaultRubric(minutes), questions, created: new Date().toISOString(), version: 1 };
+  return { id: uid(), set, name, nameAuto: true, minutes, presetId, rubricOn: false, rubricText: rubricText || defaultRubric(minutes), questions, created: new Date().toISOString(), version: 1 };
 }
 
 export const usedTopics = (prep, exceptSlotId = null) => {
@@ -105,6 +105,23 @@ export function removeSlot(prep, qi, si) {
 export function moveQuestion(prep, qi, dir) {
   const j = qi + dir; if (j < 0 || j >= prep.questions.length) return;
   [prep.questions[qi], prep.questions[j]] = [prep.questions[j], prep.questions[qi]];
+}
+
+// Make question qi a further part of its neighbour (dir -1: the question above, +1: the one below)
+export function mergeQuestion(prep, qi, dir) {
+  const j = qi + dir; if (j < 0 || j >= prep.questions.length) return null;
+  const a = prep.questions[qi], b = prep.questions[j];
+  const firstSlot = dir < 0 ? b.slots.length : 0;
+  if (dir < 0) b.slots.push(...a.slots); else b.slots.unshift(...a.slots);
+  prep.questions.splice(qi, 1);
+  return { q: dir < 0 ? j : qi, firstSlot };
+}
+// Take one part out of a multipart question and make it a question of its own (placed after)
+export function splitSlot(prep, qi, si) {
+  const q = prep.questions[qi]; if (q.slots.length < 2) return null;
+  const [slot] = q.slots.splice(si, 1);
+  prep.questions.splice(qi + 1, 0, { id: uid(), slots: [slot] });
+  return qi + 1;
 }
 
 // Random prep: calculation questions first (shared stems), then worded, then problem solving last

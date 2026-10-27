@@ -64,3 +64,15 @@ export function download(name, text, type = 'application/json') {
 
 // replace the children of el, ignoring null/false
 export function setKids(el, ...kids) { el.replaceChildren(...kids.flat(Infinity).filter(k => k !== null && k !== undefined && k !== false).map(k => (k.nodeType ? k : document.createTextNode(String(k))))); return el; }
+
+// "Are you sure?" box. Resolves true if the person confirms.
+export function confirmBox({ title = 'Are you sure?', message, confirmLabel = 'Yes, continue', cancelLabel = 'Cancel', danger = false }) {
+  return new Promise((resolve) => {
+    let done = false;
+    const finish = (v) => { if (done) return; done = true; m.close(); resolve(v); };
+    const m = modal({ title, narrow: true, onClose: () => { if (!done) { done = true; resolve(false); } },
+      body: h('div', { class: 'confirm-msg' }, ...(Array.isArray(message) ? message : [message]).map(t => h('p', {}, t))),
+      footer: [h('button', { class: 'btn', onClick: () => finish(false) }, cancelLabel), h('button', { class: 'btn ' + (danger ? 'primary danger-fill' : 'primary'), onClick: () => finish(true) }, confirmLabel)] });
+    setTimeout(() => { const b = m.scrim.querySelector('footer .primary'); if (b) b.focus(); }, 20);
+  });
+}

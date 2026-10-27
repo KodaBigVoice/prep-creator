@@ -197,3 +197,11 @@ body.resizing{cursor:col-resize;user-select:none}
   #pages .sheet:last-child,#print-answers .sheet:last-child{break-after:auto;page-break-after:auto}
   .preview{height:auto !important;min-height:0 !important}
 }
+
+.hamburger{width:34px;height:32px;display:inline-flex;align-items:center;justify-content:center;margin-right:-2px}
+.hamburger[aria-pressed=true]{background:var(--accent-soft);border-color:#b9c9f5}
+.confirm-msg p{margin:0 0 10px}
+.btn.danger-fill{background:var(--danger);border-color:var(--danger)}
+.icon{display:inline-flex}
+.acts-sep{width:1px;height:16px;background:var(--line);margin:0 4px;align-self:center}
+.iconbtn svg{display:block;margin:auto}
