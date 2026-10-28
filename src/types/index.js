@@ -10,11 +10,17 @@ import indicesDivide from './indices-divide.js';
 import expandSingle from './expand-single.js';
 import expandTwoSubtract from './expand-double-subtract.js';
 import factoriseCommon from './factorise-common.js';
-import equationsSimple from './equations-one-two-step.js';
+import equationsOneStep from './equations-one-step.js';
+import equationsTwoStep from './equations-two-step.js';
 import equationsBothSides from './equations-both-sides.js';
+import equationsBothSidesRight from './equations-both-sides-right.js';
+import equationsBothSidesNegative from './equations-both-sides-negative.js';
 import equationsBrackets from './equations-brackets.js';
 import equationsFraction from './equations-fraction.js';
+import equationsTwoFractions from './equations-two-fractions.js';
 import expandThenSolve from './expand-then-solve.js';
+import equationsQuadraticSimple from './equations-quadratic-simple.js';
+import equationsDenominator from './equations-denominator.js';
 
 import substitution from './substitution.js';
 import pythagoras from './pythagoras.js';
@@ -46,6 +52,6 @@ export default [
   bidmasStandard, bidmasNegatives,
   fractionsAdd, fractionsSubtract, fractionsMultiply, fractionsDivide,
   indicesMultiply, indicesDivide, expandSingle, expandTwoSubtract, factoriseCommon,
-  equationsSimple, equationsBothSides, equationsBrackets, equationsFraction, expandThenSolve,
+  equationsOneStep, equationsTwoStep, equationsBothSides, equationsBothSidesRight, equationsBothSidesNegative, equationsBrackets, equationsFraction, equationsTwoFractions, expandThenSolve, equationsQuadraticSimple, equationsDenominator,
   substitution, pythagoras, hcfLcm, primeFactors, percentageOfAmount, percentageChange, percentageChangeFind, reversePercentages, compoundInterest, ratioShare, ratioDifference, proportionDirect, proportionInverse, speedDistanceTime, circles, areaShapes, volumePrisms, unitsMetric, standardForm, simultaneous, rounding, averages, meanUnknown, probability, problemSolving,
 ];

@@ -18,11 +18,18 @@ export const VARIANT_D = {
   'expand-two-subtract:lin': 6, 'expand-two-subtract:two': 8,
   'factorise-common:num': 2, 'factorise-common:one': 4, 'factorise-common:two': 6,
 
-  'equations-simple:one': 1, 'equations-simple:two': 2, 'equations-simple:frac': 3,
-  'equations-both-sides:pos': 5, 'equations-both-sides:neg': 6,
-  'equations-brackets:one': 5, 'equations-brackets:both': 7,
-  'equations-fraction:split': 5.5, 'equations-fraction:top': 6, 'equations-fraction:eq': 7,
-  'expand-then-solve:std': 8,
+  // Equations, in ladder order (a type's position is the average of its options)
+  'equations-one-step:add': 1, 'equations-one-step:times': 1.3, 'equations-one-step:div': 1.6, 'equations-one-step:neg': 2,
+  'equations-two-step:std': 2, 'equations-two-step:frac': 2.8, 'equations-two-step:neg': 3,
+  'equations-both-sides:pos': 3.5, 'equations-both-sides:neg': 4.1,
+  'equations-both-sides-right:pos': 4.1, 'equations-both-sides-right:neg': 4.7,
+  'equations-both-sides-negative:one': 4.7, 'equations-both-sides-negative:both': 5.3,
+  'equations-brackets:one': 4.9, 'equations-brackets:neg': 5.3, 'equations-brackets:xside': 5.7, 'equations-brackets:both': 5.9, 'equations-brackets:sub': 6.2,
+  'equations-fraction:split': 5.8, 'equations-fraction:top': 6.3, 'equations-fraction:eq': 6.8,
+  'equations-two-fractions:sum': 6.5, 'equations-two-fractions:cross': 7, 'equations-two-fractions:diff': 7.5,
+  'expand-then-solve:std': 7.6,
+  'equations-quadratic-simple:pure': 7.4, 'equations-quadratic-simple:coef': 7.8, 'equations-quadratic-simple:const': 8.2, 'equations-quadratic-simple:full': 8.6, 'equations-quadratic-simple:sub': 9,
+  'equations-denominator:num': 8.4, 'equations-denominator:add': 8.8, 'equations-denominator:plus': 9.2,
 
   'substitution:one': 2, 'substitution:three': 4, 'substitution:three-hard': 6,
 
@@ -48,7 +55,7 @@ export const VARIANT_D = {
   'units-metric:length': 2, 'units-metric:mass': 2, 'units-metric:capacity': 2.5, 'units-metric:three': 4,
 
   'standard-form:from': 2.5, 'standard-form:to': 3, 'standard-form:multiply': 5, 'standard-form:divide': 5.5,
-  'simultaneous:opp-y': 5, 'simultaneous:same-x': 5.5, 'simultaneous:multiply': 7,
+  'simultaneous:opp-y': 9.2, 'simultaneous:same-x': 9.4, 'simultaneous:multiply': 10,
 
   'rounding:nearest': 1.5, 'rounding:dp': 2.5, 'rounding:sf': 4,
   'averages:three': 3, 'averages:mode': 3.5, 'mean-unknown:missing': 5, 'mean-unknown:new': 5.5,

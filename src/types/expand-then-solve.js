@@ -4,7 +4,7 @@ import { xAns } from './equations.js';
 
 export default {
   id: 'expand-then-solve',
-  topic: 'Linear equations', type: 'Expand, then solve (hence)', code: 'EQK2',
+  topic: 'Equations', type: 'Expand, then solve (hence)', code: 'EQK2',
   levels: ['Core', 'Additional'],
   multipart: true,
   search: 'expand and simplify hence solve equation multipart chain',

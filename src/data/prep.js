@@ -1,6 +1,6 @@
 // Building and changing a prep: slots, pools, re-rolling, random preps.
 import { makeRng, newSeed } from '../core/rng.js';
-import { generate, parsePick, typeById, TYPES, defaultFlags } from '../core/engine.js';
+import { generate, parsePick, typeById, TYPES, defaultFlags, canon } from '../core/engine.js';
 import { setById, defaultRubric } from './sets.js';
 
 let _id = 0;
@@ -9,7 +9,7 @@ export const uid = () => `s${Date.now().toString(36)}${(_id++).toString(36)}${Ma
 // 'typeId:*' -> a random variant of that type
 function resolvePick(pick, r) {
   if (!pick.endsWith(':*')) return pick;
-  const t = typeById[pick.slice(0, -2)];
+  const t = typeById[canon(pick.slice(0, -2))];
   if (!t) return null;
   return `${t.id}:${r.pick(t.variants).id}`;
 }
@@ -75,7 +75,7 @@ export function rerollSlot(prep, slot) {
   if (slot.def.mode === 'pool') choosePick(slot, usedTopics(prep, slot.id), makeRng(newSeed()));
   else if (slot.def.pick && slot.def.pick.endsWith(':*')) {      // "any option of this type": roll a different option where there is one
     const r = makeRng(newSeed()); const old = slot.pick; let next = resolvePick(slot.def.pick, r);
-    for (let i = 0; i < 6 && next === old && typeById[slot.def.pick.slice(0, -2)].variants.length > 1; i++) next = resolvePick(slot.def.pick, r);
+    for (let i = 0; i < 6 && next === old && typeById[canon(slot.def.pick.slice(0, -2))].variants.length > 1; i++) next = resolvePick(slot.def.pick, r);
     slot.pick = next;
   }
   return fillSnapshot(slot);

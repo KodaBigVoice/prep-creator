@@ -95,6 +95,16 @@ for rec in recs:
             a = S(rec['a'].split('=')[1])
             if len(sol) != 1 or sp.simplify(sol[0] - a) != 0: fail(rec, f'solve gives {sol}, answer {a}')
             else: ok += 1
+        elif k == 'solveall':
+            # equations with a pair of answers (x = ±r): the real solutions must be exactly {r, -r} and the displayed answer must say so
+            x = sp.Symbol(c['v'])
+            lhs, rhs = c['eq'].split('=')
+            sol = set(sp.solve(sp.Eq(S(lhs, **{c['v']: x}), S(rhs, **{c['v']: x})), x))
+            rr = sp.Rational(c['val'].split('/')[0], c['val'].split('/')[1])
+            shown = rec['a'].split('=')[1].strip()
+            if not shown.startswith('\\pm'): fail(rec, 'answer should start with \\pm')
+            elif sol != {rr, -rr} or sp.simplify(S(shown[len('\\pm'):]) - rr) != 0: fail(rec, f'solveall gives {sol}, answer {shown}')
+            else: ok += 1
         elif k == 'equiv':
             x, y = sp.symbols('x y')
             if sp.simplify(sp.expand(S(c['q']) - S(c['a']))) != 0: fail(rec, 'equiv: not equal')
