@@ -22,7 +22,7 @@ const idx = fs.readFileSync(path.join(here, '../src/types/index.js'), 'utf8');
 const NONTYPE = new Set(['fractions.js', 'equations.js', 'factorising.js', 'expanding.js']);          // shared helper files
 const unregistered = files.filter(f => !NONTYPE.has(f) && !idx.includes(`./${f}`));
 
-const FORBIDDEN = [/leave your answer/i, /simplest form/i, /as a mixed number/i, /undefined/, /NaN/, /\bwork out the value of\b.*\bwork out\b/i, /  +/];
+const FORBIDDEN = [/leave your answer/i, /simplest form/i, /leave .{0,30}as a mixed number/i, /undefined/, /NaN/, /\bwork out the value of\b.*\bwork out\b/i, /  +/];
 const problems = []; const dump = []; const stats = [];
 // every option needs a difficulty number, and the table must not mention options that no longer exist
 const known = new Set();

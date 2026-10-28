@@ -83,7 +83,7 @@ for rec in recs:
             if not good: fail(rec, f'eval: {q} != answer {a}')
             else:
                 # answer should be a simplified fraction/mixed number: displayed denominator coprime to numerator, mixed fraction < 1
-                m = re.search(r'(\d+)\\dfrac\{(\d+)\}\{(\d+)\}$', rec['a']) or re.search(r'^\\dfrac\{(\d+)\}\{(\d+)\}$', rec['a'])
+                m = re.search(r'(\d+)\\dfrac\{(\d+)\}\{(\d+)\}$', rec['a']) or re.search(r'^-?\\dfrac\{(\d+)\}\{(\d+)\}$', rec['a'])
                 if m:
                     nn, dd = int(m.group(m.lastindex - 1)), int(m.group(m.lastindex))
                     if math.gcd(nn, dd) != 1 or nn >= dd: fail(rec, 'answer fraction not simplified/proper')
@@ -173,6 +173,13 @@ for rec in recs:
                 except Exception as ex:
                     pass
             ok += 1
+        elif k == 'order':
+            # fractions in order (or the larger/smaller one): the displayed answer must be exactly the expected values, in order
+            items = sorted((Fraction(x) for x in c['items']), reverse=(c['dir'] == 'desc'))[:c['n']]
+            shown = [Fraction(int(sp.Rational(numval(t)).p), int(sp.Rational(numval(t)).q)) for t in rec['a'].split(',\\ ')]
+            if len(set(c['items'])) != len(c['items']) or len({Fraction(x) for x in c['items']}) != len(c['items']): fail(rec, 'order: equal values in the question')
+            elif shown != items: fail(rec, f'order: expected {[str(i) for i in items]}, shown {[str(i) for i in shown]}')
+            else: ok += 1
         elif k == 'simul':
             (a1, b1, c1), (a2, b2, c2) = c['eqs']; x, y = c['x'], c['y']
             if a1*x + b1*y != c1 or a2*x + b2*y != c2 or a1*b2 - a2*b1 == 0: fail(rec, 'simul wrong')

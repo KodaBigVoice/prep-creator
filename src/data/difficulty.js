@@ -6,10 +6,20 @@
 export const VARIANT_D = {
   'bidmas-standard:four': 2, 'bidmas-standard:bp': 3, 'bidmas-negatives:std': 6,
 
-  'fractions-add:plain': 3, 'fractions-add:carry': 4,
-  'fractions-subtract:plain': 3, 'fractions-subtract:any': 4, 'fractions-subtract:overlap': 5,
-  'fractions-multiply:mixed': 4,
-  'fractions-divide:int': 3, 'fractions-divide:cancel': 4, 'fractions-divide:mixed': 5,
+  // Fractions, in ladder order
+  'fractions-equivalent:up': 1.2, 'fractions-equivalent:down': 1.8,
+  'fractions-simplify:small': 2, 'fractions-simplify:large': 2.6,
+  'fractions-improper:tomixed': 2.6, 'fractions-improper:toimproper': 3, 'fractions-improper:simplify': 3.4,
+  'fractions-compare:larger': 3.2, 'fractions-compare:order': 3.8, 'fractions-compare:ordermix': 4.2,
+  'fractions-of-amount:unit': 3.4, 'fractions-of-amount:nonunit': 4, 'fractions-of-amount:units': 4.3, 'fractions-of-amount:improper': 4.8,
+  'fractions-same-denominator:add': 4, 'fractions-same-denominator:sub': 4.3, 'fractions-same-denominator:addover': 4.6, 'fractions-same-denominator:simplify': 5,
+  'fractions-related-denominators:add': 4.7, 'fractions-related-denominators:sub': 5, 'fractions-related-denominators:addover': 5.3,
+  'fractions-unrelated-denominators:addc': 5.3, 'fractions-unrelated-denominators:subc': 5.6, 'fractions-unrelated-denominators:addl': 5.8, 'fractions-unrelated-denominators:subl': 6.1,
+  'fractions-mixed:add-plain': 5.9, 'fractions-mixed:sub-plain': 6, 'fractions-mixed:add-carry': 6.3, 'fractions-mixed:sub-whole': 6.5, 'fractions-mixed:sub-any': 6.6, 'fractions-mixed:sub-overlap': 6.9,
+  'fractions-multiply:plain': 6, 'fractions-multiply:whole': 6.3, 'fractions-multiply:cancel': 6.8, 'fractions-multiply:mixfrac': 7.2, 'fractions-multiply:mixed': 7.6,
+  'fractions-divide:int': 6.6, 'fractions-divide:frac': 7, 'fractions-divide:whole': 7.4, 'fractions-divide:cancel': 7.9, 'fractions-divide:mixed': 8.2,
+  'fractions-mixed-operations:bracket': 7.8, 'fractions-mixed-operations:order': 8.2, 'fractions-mixed-operations:bracketdiv': 8.6,
+  'fractions-negative:addsub': 8.6, 'fractions-negative:mul': 9, 'fractions-negative:div': 9.4,
 
   'indices-multiply:one': 3, 'indices-multiply:two': 4, 'indices-multiply:neg': 5,
   'indices-divide:div': 4, 'indices-divide:frac': 5,

@@ -15,6 +15,8 @@ const ALIAS = {
   'factorise-common': 'factorise-number', 'factorise-common:num': 'factorise-number:two', 'factorise-common:one': 'factorise-number-letter:std', 'factorise-common:two': 'factorise-two-letters:xy',
   'expand-single': 'expand-number', 'expand-single:pos': 'expand-number:pos', 'expand-single:neg': 'expand-number:neg', 'expand-single:two': 'expand-number:two',
   'expand-two-subtract': 'expand-simplify-subtract', 'expand-two-subtract:lin': 'expand-simplify-subtract:lin', 'expand-two-subtract:two': 'expand-simplify-subtract:two',
+  'fractions-add': 'fractions-mixed:add-plain', 'fractions-add:plain': 'fractions-mixed:add-plain', 'fractions-add:carry': 'fractions-mixed:add-carry',
+  'fractions-subtract': 'fractions-mixed:sub-plain', 'fractions-subtract:plain': 'fractions-mixed:sub-plain', 'fractions-subtract:any': 'fractions-mixed:sub-any', 'fractions-subtract:overlap': 'fractions-mixed:sub-overlap',
   'equations-simple:one': 'equations-one-step:add', 'equations-simple:two': 'equations-two-step:std', 'equations-simple:frac': 'equations-two-step:frac',
 };
 export const canon = (p) => ALIAS[p] ?? p;

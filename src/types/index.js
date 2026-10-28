@@ -1,10 +1,19 @@
 // REGISTER NEW QUESTION TYPES HERE: add one import line and one entry in the list.
 import bidmasStandard from './bidmas-standard.js';
 import bidmasNegatives from './bidmas-negatives.js';
-import fractionsAdd from './fractions-add.js';
-import fractionsSubtract from './fractions-subtract.js';
+import fractionsEquivalent from './fractions-equivalent.js';
+import fractionsSimplify from './fractions-simplify.js';
+import fractionsImproper from './fractions-improper.js';
+import fractionsCompare from './fractions-compare.js';
+import fractionsOfAmount from './fractions-of-amount.js';
+import fractionsSameDenominator from './fractions-same-denominator.js';
+import fractionsRelated from './fractions-related-denominators.js';
+import fractionsUnrelated from './fractions-unrelated-denominators.js';
+import fractionsMixed from './fractions-mixed.js';
 import fractionsMultiply from './fractions-multiply.js';
 import fractionsDivide from './fractions-divide.js';
+import fractionsMixedOps from './fractions-mixed-operations.js';
+import fractionsNegative from './fractions-negative.js';
 import indicesMultiply from './indices-multiply.js';
 import indicesDivide from './indices-divide.js';
 import expandNumber from './expand-number.js';
@@ -70,7 +79,7 @@ import problemSolving from './problem-solving.js';
 
 export default [
   bidmasStandard, bidmasNegatives,
-  fractionsAdd, fractionsSubtract, fractionsMultiply, fractionsDivide,
+  fractionsEquivalent, fractionsSimplify, fractionsImproper, fractionsCompare, fractionsOfAmount, fractionsSameDenominator, fractionsRelated, fractionsUnrelated, fractionsMixed, fractionsMultiply, fractionsDivide, fractionsMixedOps, fractionsNegative,
   indicesMultiply, indicesDivide, expandNumber, expandLetter, expandSimplifyAdd, expandSimplifySubtract, expandPowers, expandPowersHigh, expandDouble, expandDoubleCoef, expandSquare, expandDots, expandSimplifyDouble, expandTriple, factoriseNumber, factoriseLetter, factoriseNumberLetter, factoriseTwoLetters, factorisePowers, factorisePowersHigh, factoriseQuadratic, factoriseSquares, factoriseAx2, factoriseFull,
   equationsOneStep, equationsTwoStep, equationsBothSides, equationsBothSidesRight, equationsBothSidesNegative, equationsBrackets, equationsFraction, equationsTwoFractions, expandThenSolve, equationsQuadraticSimple, equationsQuadraticFactorise, equationsDenominator,
   substitution, pythagoras, hcfLcm, primeFactors, percentageOfAmount, percentageChange, percentageChangeFind, reversePercentages, compoundInterest, ratioShare, ratioDifference, proportionDirect, proportionInverse, speedDistanceTime, circles, areaShapes, volumePrisms, unitsMetric, standardForm, simultaneous, rounding, averages, meanUnknown, probability, problemSolving,

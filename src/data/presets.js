@@ -14,7 +14,7 @@ export const STARTER_PRESETS = [
     id: 'starter-y7-additional', starter: true, set: 'Y7 Additional', name: 'Y7 Additional (starter)', minutes: 30,
     questions: [
       [F('bidmas-standard:bp'), F('bidmas-negatives:std')],
-      [F('fractions-subtract:overlap'), F('fractions-divide:cancel')],
+      [F('fractions-mixed:sub-overlap'), F('fractions-divide:cancel')],
       [F('indices-multiply:two'), F('indices-divide:frac'), pool('Expand or factorise', ['expand-simplify-subtract:lin', 'factorise-number-letter:std', 'factorise-number:two'])],
       [F('equations-both-sides:pos'), F('equations-brackets:both'), F('equations-fraction:top')],
       [pool('Question 5 pool', POOL_A)],
