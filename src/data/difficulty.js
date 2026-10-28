@@ -33,6 +33,18 @@ export const VARIANT_D = {
   'fracprob-group:rest': 8, 'fracprob-group:of': 8.5,
   'fracprob-multi:share': 8.6, 'fracprob-multi:stages': 8.9, 'fracprob-multi:three': 9.4,
 
+  // Fractions, decimals and percentages (FDP), in ladder order
+  'fdp-dec-to-frac:tenths': 1.5, 'fdp-dec-to-frac:hundredths': 2.2, 'fdp-dec-to-frac:zero': 2.8, 'fdp-dec-to-frac:bigger': 3.2, 'fdp-dec-to-frac:thou': 4.2, 'fdp-dec-to-frac:thoubig': 4.8,
+  'fdp-frac-to-dec:tenths': 2.4, 'fdp-frac-to-dec:hundredths': 3.2, 'fdp-frac-to-dec:mixed': 3.6, 'fdp-frac-to-dec:eighths': 4.6, 'fdp-frac-to-dec:harder': 5.4,
+  'fdp-perc-to-fd:frac': 3.4, 'fdp-perc-to-fd:dec': 3.6, 'fdp-perc-to-fd:hardfrac': 5, 'fdp-perc-to-fd:harddec': 5.4,
+  'fdp-to-perc:dec': 3.8, 'fdp-to-perc:frac': 4, 'fdp-to-perc:harddec': 5.4, 'fdp-to-perc:hard': 5.6,
+  'fdp-table:frac': 4.4, 'fdp-table:dec': 4.6, 'fdp-table:perc': 4.8, 'fdp-table:hard': 6,
+  'fdp-order:three': 5, 'fdp-order:four': 6.4,
+  'fdp-beyond:perc': 5.4, 'fdp-beyond:mixed': 5.8, 'fdp-beyond:hard': 6.6,
+  'fdp-mixed-calc:frac': 6.8, 'fdp-mixed-calc:dec': 7, 'fdp-mixed-calc:mult': 7.6,
+  'fdp-recurring-id:which2': 6.8, 'fdp-recurring-id:which4': 7.4, 'fdp-recurring-id:dec1': 7.6, 'fdp-recurring-id:dec2': 8.2,
+  'fdp-recurring-frac:one': 8.6, 'fdp-recurring-frac:two': 9, 'fdp-recurring-frac:mixed': 9.4, 'fdp-recurring-frac:bar': 9.6,
+
   'indices-multiply:one': 3, 'indices-multiply:two': 4, 'indices-multiply:neg': 5,
   'indices-divide:div': 4, 'indices-divide:frac': 5,
 

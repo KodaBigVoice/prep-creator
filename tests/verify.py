@@ -64,6 +64,22 @@ def numval(a):
     a = a.replace('\\pi', '').replace('\\ldots', '')
     return S(a.strip())
 
+def mathsegs(s):
+    # the {{...}} maths segments of a body (braces inside the maths are balanced)
+    out = []; i = 0
+    while i < len(s):
+        if s.startswith('{{', i):
+            j = i + 2; d = 0
+            while j < len(s):
+                if s[j] == '{': d += 1
+                elif s[j] == '}':
+                    if d > 0: d -= 1
+                    elif s.startswith('}}', j): break
+                j += 1
+            out.append(s[i + 2:j]); i = j + 2
+        else: i += 1
+    return out
+
 ok = bad = 0; fails = []
 def fail(rec, why):
     global bad
@@ -176,9 +192,56 @@ for rec in recs:
         elif k == 'order':
             # fractions in order (or the larger/smaller one): the displayed answer must be exactly the expected values, in order
             items = sorted((Fraction(x) for x in c['items']), reverse=(c['dir'] == 'desc'))[:c['n']]
-            shown = [Fraction(int(sp.Rational(numval(t)).p), int(sp.Rational(numval(t)).q)) for t in rec['a'].split(',\\ ')]
+            def pv(t):
+                t = t.strip(); pc = t.endswith('\\%'); core = t[:-2] if pc else t
+                if re.fullmatch(r'\d+(\.\d+)?', core): x = Fraction(core)
+                else:
+                    q_ = sp.Rational(numval(core)); x = Fraction(int(q_.p), int(q_.q))
+                return x / 100 if pc else x
+            shown = [pv(t) for t in rec['a'].split(',\\ ')]
             if len(set(c['items'])) != len(c['items']) or len({Fraction(x) for x in c['items']}) != len(c['items']): fail(rec, 'order: equal values in the question')
             elif shown != items: fail(rec, f'order: expected {[str(i) for i in items]}, shown {[str(i) for i in shown]}')
+            else: ok += 1
+        elif k == 'recur':
+            # recurring decimals: read the dots (or bar) straight off the question or the answer and compare with the fraction
+            want = Fraction(c['frac'])
+            def recval(t):
+                t = t.strip(); m = re.match(r'^(\d+)\.(.*)$', t)
+                ip = int(m.group(1)); rest = m.group(2); digs = []; start = end = None; i = 0
+                while i < len(rest):
+                    if rest.startswith('\\dot{', i):
+                        j = rest.index('}', i); d = rest[i + 5:j]; 
+                        if start is None: start = len(digs)
+                        digs.append(d); end = len(digs) - 1; i = j + 1
+                    elif rest.startswith('\\overline{', i):
+                        j = rest.index('}', i); ds = rest[i + 10:j]
+                        start = len(digs); digs.extend(ds); end = len(digs) - 1; i = j + 1
+                    else: digs.append(rest[i]); i += 1
+                nr = ''.join(digs[:start]); rep = ''.join(digs[start:end + 1])
+                assert end == len(digs) - 1, 'digits after the repeating part'
+                assert set(rep) != {'9'}, 'a repeating 9 is just a terminating decimal'
+                return ip + Fraction(int(nr or '0'), 10 ** len(nr)) + Fraction(int(rep), (10 ** len(rep) - 1) * 10 ** len(nr))
+            if c['dir'] == 'todec':
+                got = recval(rec['a'])
+                if got != want: fail(rec, f'recur: shown decimal is {got}, fraction is {want}')
+                else: ok += 1
+            else:
+                note = mathsegs(rec['body']); got = recval(note[0])
+                shown = Fraction(int(sp.Rational(numval(rec['a'])).p), int(sp.Rational(numval(rec['a'])).q))
+                same_note = len(note) < 2 or recval(note[1]) == got
+                if got != want or shown != want or not same_note or math.gcd(want.numerator, want.denominator) != 1: fail(rec, f'recur: decimal is {got}, answer {shown}, expected {want}')
+                else: ok += 1
+        elif k == 'recurpick':
+            # which fractions give recurring decimals: denominator (in lowest terms) has a prime factor other than 2 or 5
+            def rec_(x):
+                d = Fraction(x).denominator
+                while d % 2 == 0: d //= 2
+                while d % 5 == 0: d //= 5
+                return d != 1
+            expect = [x for x in c['items'] if rec_(x)]
+            got = [t for t in re.findall(r'\\dfrac\{(\d+)\}\{(\d+)\}', rec['a'])]
+            got = [f'{a}/{b}' for a, b in got]
+            if sorted(expect) != sorted(c['ans']) or sorted(got) != sorted(expect) or not expect: fail(rec, f'recurpick: expected {expect}, shown {got}')
             else: ok += 1
         elif k == 'simul':
             (a1, b1, c1), (a2, b2, c2) = c['eqs']; x, y = c['x'], c['y']
