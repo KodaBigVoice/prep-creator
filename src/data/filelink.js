@@ -1,7 +1,7 @@
 // Optional link to a real file on the computer (Edge/Chrome only). Save then keeps that file up to date.
 // The file handle is remembered in the browser's IndexedDB; the browser asks permission again after a restart.
 const DB = 'prepCreator.files', ST = 'handles', KEY = 'history';
-const TYPES = [{ description: 'Prep Creator history', accept: { 'application/json': ['.json'] } }];
+const TYPES = [{ description: 'PMU history', accept: { 'application/json': ['.json'] } }];
 
 const idb = () => new Promise((res, rej) => {
   const r = indexedDB.open(DB, 1);
@@ -17,7 +17,7 @@ const remember = async (hd) => { cache = hd; await tx('readwrite', s => s.put(hd
 export const unlink = async () => { cache = null; await tx('readwrite', s => s.delete(KEY)); };
 
 export async function linkNew() {
-  const hd = await window.showSaveFilePicker({ suggestedName: 'Prep Creator history.json', types: TYPES });
+  const hd = await window.showSaveFilePicker({ suggestedName: 'PMU history.json', types: TYPES });
   await remember(hd); return hd;
 }
 export async function linkExisting() {

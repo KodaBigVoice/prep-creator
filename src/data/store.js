@@ -20,7 +20,7 @@ export function exportText(st) {
 }
 export function importText(st, text) {
   const d = JSON.parse(text);
-  if (d.app !== 'prep-creator') throw new Error('This is not a Prep Creator history file.');
+  if (d.app !== 'prep-creator') throw new Error('This is not a PMU history file.');
   const byId = (arr) => Object.fromEntries(arr.map(x => [x.id, x]));
   const preps = byId(st.preps);
   for (const p of d.preps || []) if (!preps[p.id] || (p.saved || '') >= (preps[p.id].saved || '')) preps[p.id] = p;

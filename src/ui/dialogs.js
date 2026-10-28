@@ -90,7 +90,7 @@ export function openHistory() {
   const draw = () => {
     const tabs = h('div', { class: 'seg', role: 'tablist' }, ...[['preps', 'Saved preps'], ['presets', 'My presets']].map(([k, l]) => h('button', { 'aria-checked': tab === k, onClick: () => { tab = k; draw(); } }, l)));
     const top = h('div', { style: { display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '10px', flexWrap: 'wrap' } }, tabs, h('span', { style: { flex: 1 } }),
-      h('button', { class: 'btn small', onClick: () => { download(`Prep Creator history ${new Date().toISOString().slice(0, 10)}.json`, exportText(st)); } }, 'Download history file'),
+      h('button', { class: 'btn small', onClick: () => { download(`PMU history ${new Date().toISOString().slice(0, 10)}.json`, exportText(st)); } }, 'Download history file'),
       h('label', { class: 'btn small' }, 'Open history file…', h('input', { type: 'file', accept: '.json,application/json', style: { display: 'none' }, onChange: async (e) => {
         const f = e.target.files[0]; if (!f) return;
         try { importText(st, await f.text()); ctx.save(); toast('History file loaded.'); draw(); ctx.hooks.toolbar(); } catch (err) { toast('Could not read that file: ' + err.message, 5000); }

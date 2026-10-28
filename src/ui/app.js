@@ -63,7 +63,7 @@ async function doSave(kind = saveMode()) {
 let linkedName = '';
 async function refreshLinked() { try { const hd = FL.supported() ? await FL.getLinked() : null; linkedName = hd ? hd.name : ''; } catch (e) { linkedName = ''; } }
 async function saveToFile() {
-  if (!FL.supported()) { download(`Prep Creator history ${new Date().toISOString().slice(0, 10)}.json`, exportText(store)); return 'download'; }
+  if (!FL.supported()) { download(`PMU history ${new Date().toISOString().slice(0, 10)}.json`, exportText(store)); return 'download'; }
   let hd = await FL.getLinked();
   if (!hd) {
     hd = await FL.linkNew();
@@ -131,6 +131,7 @@ function renderToolbar() {
   setKids(toolbar,
     h('button', { class: 'iconbtn hamburger', 'aria-label': 'Options', 'aria-pressed': !!ctx.ui.sidebar, title: ctx.ui.sidebar ? 'Hide the options panel' : 'Show the options panel', onClick: toggleSidebar },
       h('span', { html: '<svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 5h12M3 9h12M3 13h12"/></svg>' })),
+    h('img', { class: 'applogo', src: 'logo.svg', alt: 'PMU: Prep Maths Universe', title: 'PMU: Prep Maths Universe' }),
     h('button', { class: 'btn', 'data-menu-anchor': '', onClick: (e) => newMenu(e.currentTarget) }, 'New ▾'),
     h('div', { class: 'field' }, h('label', {}, 'Name'), nameIn),
     h('span', { class: 'sp' }),
@@ -285,7 +286,7 @@ function tabHistory(el) {
     h('hr'),
     h('div', { class: 'sec' }, 'Copy to or from a file'),
     h('div', { class: 'stack' },
-      h('button', { class: 'btn small', onClick: () => download(`Prep Creator history ${new Date().toISOString().slice(0, 10)}.json`, exportText(store)) }, 'Download a copy'),
+      h('button', { class: 'btn small', onClick: () => download(`PMU history ${new Date().toISOString().slice(0, 10)}.json`, exportText(store)) }, 'Download a copy'),
       h('label', { class: 'btn small' }, 'Open a file…', h('input', { type: 'file', accept: '.json,application/json', style: { display: 'none' }, onChange: async (e) => {
         const f = e.target.files[0]; if (!f) return;
         try { importText(store, await f.text()); ctx.save(); toast('History file loaded.'); ctx.hooks.toolbar(); } catch (err) { toast('Could not read that file: ' + err.message, 5000); }
