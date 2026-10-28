@@ -1,4 +1,4 @@
-import { h, toast, confirmBox } from './dom.js';
+import { h, toast, confirmBox, showMenu } from './dom.js';
 import { ctx } from './state.js';
 import { composeQuestion } from '../layout/compose.js';
 import { mathToHTML } from '../layout/render.js';
@@ -8,6 +8,10 @@ import * as P from '../data/prep.js';
 
 const ICON_UP = '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 2.5h10M8 13.5V6M4.8 8.7 8 5.5l3.2 3.2"/></svg>';
 const ICON_DOWN = '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 13.5h10M8 2.5V10M4.8 7.3 8 10.5l3.2-3.2"/></svg>';
+const SV = (d) => `<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">${d}</svg>`;
+const ICON_LOCK = SV('<rect x="3.2" y="7" width="9.6" height="6.8" rx="1.4"/><path d="M5.2 7V5.2a2.8 2.8 0 0 1 5.6 0V7"/>');
+const ICON_UNLOCK = SV('<rect x="3.2" y="7" width="9.6" height="6.8" rx="1.4"/><path d="M5.2 7V5.2a2.8 2.8 0 0 1 5.4-1"/>');
+const ICON_BIN = SV('<path d="M2.8 4.2h10.4M6.2 4.2V2.8h3.6v1.4M4.2 4.2l.6 9h6.4l.6-9M6.6 6.6v4.2M9.4 6.6v4.2"/>');
 const fmt = (n) => (Math.round(n * 100) / 100).toString();
 
 function stepper({ value, onChange, step = 1, min = 0, manual = false, title }) {
@@ -78,21 +82,27 @@ function detailPanel(q, qi, slot, si, cq, part) {
   const isPool = slot.def.mode === 'pool';
   const anyOpt = slot.def.mode === 'fixed' && slot.def.pick && slot.def.pick.endsWith(':*');
   const pickLine = anyOpt ? pickName(slot.def.pick) + ' › any option' : pickName(slot.pick);
+  const canRemove = cq.parts.length > 1 || prep.questions.length > 0;
   return h('div', { class: 'detail' },
+    h('div', { class: 'dside' },
+      h('button', { class: 'iconbtn' + (slot.locked ? ' on' : ''), title: slot.locked ? 'Locked: re-roll will not change this. Click to unlock' : 'Lock: stop re-roll changing this question', html: slot.locked ? ICON_LOCK : ICON_UNLOCK, onClick: () => { slot.locked = !slot.locked; ctx.commit(); } }),
+      canRemove ? h('button', { class: 'iconbtn danger', title: 'Remove this part', html: ICON_BIN, onClick: () => { P.removeSlot(prep, qi, si); ctx.ui.sel = null; ctx.commit(); } }) : null),
     h('div', { class: 'dpath' }, h('b', {}, pickLine), isPool ? h('span', { class: 'tag pool' }, 'pool') : null, slot.meta && slot.meta.multipart ? h('span', { class: 'tag' }, 'multipart') : null, slot.locked ? h('span', { class: 'tag lock' }, 'locked') : null),
     anyOpt ? h('div', { class: 'hint' }, `A different option comes up each time you re-roll. This one is: ${slot.meta.label}.`) : null,
     range ? h('div', { class: 'hint' }, range) : null,
     h('div', { class: 'dbtns' },
-      btn('Change question…', () => changeSlot(q, qi, slot)),
-      btn('Edit wording or answer…', () => openEditDialog(slot, () => ctx.commit())),
-      btn('+ Add a part', () => addPart(qi)),
-      q.slots.length > 1 ? btn('Make this its own question', () => { const nq = P.splitSlot(prep, qi, si); ctx.ui.sel = nq === null ? null : { q: nq, k: 0 }; ctx.commit(); }, { title: 'Take this out of the multipart question and give it its own number' }) : null,
-      btn(slot.locked ? 'Unlock' : 'Lock', () => { slot.locked = !slot.locked; ctx.commit(); }, { title: 'A locked question is not changed by re-roll' }),
-      isPool ? btn('Pool choices…', () => openPoolDialog(slot, qi, si)) : btn('Make this a pool…', () => { slot.def = { mode: 'pool', label: 'Pool', candidates: [{ pick: slot.pick, on: true }] }; ctx.commit(); openPoolDialog(slot, qi, si); }),
-      isPool ? btn('Make fixed', () => { slot.def = { mode: 'fixed', pick: slot.pick }; ctx.commit(); }) : null,
-      anyOpt ? btn('Keep this option', () => { slot.def = { mode: 'fixed', pick: slot.pick }; ctx.commit(); }, { title: 'Stop changing option when you re-roll' }) : null,
-      btn('Reset marks and lines', () => { slot.marksManual = slot.marksManual.map(() => false); slot.linesManual = slot.linesManual.map(() => false); P.reseed(slot, slot.seed); ctx.commit(); }),
-      cq.parts.length > 1 || prep.questions.length > 0 ? btn('Remove', () => { P.removeSlot(prep, qi, si); ctx.ui.sel = null; ctx.commit(); }, { danger: true }) : null),
+      btn('Replace…', () => changeSlot(q, qi, slot), { title: 'Swap this for a different question' }),
+      btn('Edit…', () => openEditDialog(slot, () => ctx.commit()), { title: 'Change the wording or the answer' }),
+      h('button', { class: 'btn small', 'data-menu-anchor': '', onClick: (e) => showMenu(e.currentTarget, [
+        { label: '+ Add a part', onClick: () => addPart(qi) },
+        q.slots.length > 1 ? { label: 'Make this its own question', sub: 'Take it out of the multipart question', onClick: () => { const nq = P.splitSlot(prep, qi, si); ctx.ui.sel = nq === null ? null : { q: nq, k: 0 }; ctx.commit(); } } : null,
+        { sep: true },
+        isPool ? { label: 'Pool choices…', sub: 'Which questions re-roll can draw from', onClick: () => openPoolDialog(slot, qi, si) } : { label: 'Make this a pool…', sub: 'Re-roll picks from several questions you choose', onClick: () => { slot.def = { mode: 'pool', label: 'Pool', candidates: [{ pick: slot.pick, on: true }] }; ctx.commit(); openPoolDialog(slot, qi, si); } },
+        isPool ? { label: 'Stop being a pool', sub: 'Re-roll keeps this kind of question', onClick: () => { slot.def = { mode: 'fixed', pick: slot.pick }; ctx.commit(); } } : null,
+        anyOpt ? { label: 'Keep this option', sub: 'Stop changing option when you re-roll', onClick: () => { slot.def = { mode: 'fixed', pick: slot.pick }; ctx.commit(); } } : null,
+        { sep: true },
+        { label: 'Reset marks and lines', onClick: () => { slot.marksManual = slot.marksManual.map(() => false); slot.linesManual = slot.linesManual.map(() => false); P.reseed(slot, slot.seed); ctx.commit(); } },
+      ].filter(Boolean)) }, 'More ▾')),
     slot.meta.integer ? h('label', { class: 'dint' }, h('input', { type: 'checkbox', checked: flagsInt, onChange: () => { P.setFlags(slot, { integer: !flagsInt }); ctx.commit(); } }), ' Integer answers only') : null);
 }
 

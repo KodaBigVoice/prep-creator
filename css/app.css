@@ -106,8 +106,11 @@ body.resizing{cursor:col-resize;user-select:none}
 .prow .txt:hover{background:#eef2fa}
 .prow .c{display:flex;justify-content:center;align-items:center}
 .badge.ed{background:#fff1d6;color:#8a5a00}
-.detail{padding:8px 12px 12px 44px;background:#f6f9ff;border-top:1px dashed #c9d6f3;border-radius:0 0 8px 8px}
+.detail{position:relative;padding:8px 56px 12px 44px;background:#f6f9ff;border-top:1px dashed #c9d6f3;border-radius:0 0 8px 8px}
 .detail .dpath{display:flex;align-items:center;flex-wrap:wrap;gap:4px;font-size:13px}
+.detail .dside{position:absolute;right:12px;top:6px;display:flex;flex-direction:column;gap:2px;width:34px;align-items:center}
+.detail .dside .iconbtn.on{color:var(--accent);background:var(--accent-soft)}
+.iconbtn.danger:hover:not(:disabled){color:#b42318;background:#fdecea}
 .detail .dbtns{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
 .detail .dint{display:flex;align-items:center;gap:4px;margin-top:8px;font-size:13px}
 .lockmark{font-size:12px}
