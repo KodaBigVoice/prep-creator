@@ -9,6 +9,9 @@
 .sheet *{box-sizing:border-box}
 .sheet h1{font-size:1.45em;line-height:1.2;margin:0;font-weight:700;letter-spacing:-.01em}
 .sheet .head{display:flex;justify-content:space-between;align-items:baseline;gap:10mm}
+.sheet .head.has-logo{align-items:center}
+.sheet .head h1{margin-right:auto}
+.sheet .head .logo{height:9mm;width:auto;display:block;flex:none}
 .sheet .name{white-space:nowrap;font-size:.95em;color:#333}
 .sheet .name span{display:inline-block;width:62mm;border-bottom:1px solid #333;margin-left:2mm}
 .sheet .intro{margin:2.2mm 0 0;color:#333}

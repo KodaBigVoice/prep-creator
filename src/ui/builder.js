@@ -12,6 +12,7 @@ const SV = (d) => `<svg width="16" height="16" viewBox="0 0 16 16" fill="none" s
 const ICON_LOCK = SV('<rect x="3.2" y="7" width="9.6" height="6.8" rx="1.4"/><path d="M5.2 7V5.2a2.8 2.8 0 0 1 5.6 0V7"/>');
 const ICON_UNLOCK = SV('<rect x="3.2" y="7" width="9.6" height="6.8" rx="1.4"/><path d="M5.2 7V5.2a2.8 2.8 0 0 1 5.4-1"/>');
 const ICON_BIN = SV('<path d="M2.8 4.2h10.4M6.2 4.2V2.8h3.6v1.4M4.2 4.2l.6 9h6.4l.6-9M6.6 6.6v4.2M9.4 6.6v4.2"/>');
+const ICON_POOL = SV('<path d="M5.5 3.2h6.2a1.6 1.6 0 0 1 1.6 1.6v6.2"/><rect x="2.7" y="5.4" width="7.9" height="8" rx="1.6"/>');
 const ICON_SWAP = SV('<path d="M2.5 5.5h10M9.8 2.8l2.7 2.7-2.7 2.7M13.5 10.5h-10M6.2 7.8l-2.7 2.7 2.7 2.7"/>');
 const ICON_EDIT = SV('<path d="M2.8 13.2l.6-2.9 7.2-7.2a1.4 1.4 0 0 1 2 0l.3.3a1.4 1.4 0 0 1 0 2l-7.2 7.2-2.9.6zM9.6 4.1l2.3 2.3"/>');
 const ICON_MORE = '<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><circle cx="3.5" cy="8" r="1.3"/><circle cx="8" cy="8" r="1.3"/><circle cx="12.5" cy="8" r="1.3"/></svg>';
@@ -46,7 +47,7 @@ export function renderBuilder(root) {
     const isSel = sel && sel.q === qi;
     const card = h('div', { class: 'q-card' + (isSel ? ' sel' : '') },
       h('div', { class: 'q-head' }, h('span', { class: 'n' }, `${qi + 1}.`), h('span', { class: 'hint' }, `${cq.marks} mark${cq.marks === 1 ? '' : 's'}`),
-        q.slots.some(s => s.locked) ? h('span', { class: 'lockmark', title: 'Locked' }, '🔒') : null,
+        q.slots.some(s => s.locked) ? h('span', { class: 'lockmark', title: 'Locked', html: ICON_LOCK }) : null,
         h('span', { class: 'sp' }),
         h('span', { class: 'acts' },
           h('button', { class: 'iconbtn', title: 'Make this a further part of the question above', disabled: qi === 0, html: ICON_UP, onClick: () => joinQuestion(qi, -1) }),
@@ -64,7 +65,7 @@ export function renderBuilder(root) {
       const pinfo = poolInfo(slot);
       const toggleSel = () => { ctx.ui.sel = isRowSel ? null : { q: qi, k }; ctx.hooks.builder(); };
       const row = h('div', { class: 'prow' + (aos ? ' aos' : '') + (isRowSel ? ' sel' : '') + (p.l ? '' : ' nolab') },
-        h('div', { class: 'gut' }, pinfo && firstOfSlot ? h('button', { class: 'poolico', title: `Pool: ${pinfo.text}`, 'aria-label': 'Pool question', html: ICON_SHUFFLE, onClick: toggleSel }) : null),
+        h('div', { class: 'gut' }, pinfo && firstOfSlot ? h('button', { class: 'poolico', title: `Pool: ${pinfo.text}`, 'aria-label': 'Pool question', html: ICON_POOL, onClick: toggleSel }) : null),
         h('div', { class: 'lab' }, p.l ? `(${p.l})` : ''),
         h('div', { class: 'txt', title: 'Click for details and options', onClick: toggleSel,
           html: T(p.text) + (p.calc ? ' <span class="badge">calculator</span>' : '') + (p.edited ? ' <span class="badge ed">edited</span>' : '') }),
@@ -97,7 +98,7 @@ function detailPanel(q, qi, slot, si, cq, part) {
       h('button', { class: 'iconbtn boxed' + (slot.locked ? ' on' : ''), title: slot.locked ? 'Locked: re-roll will not change this. Click to unlock' : 'Lock: stop re-roll changing this question', html: slot.locked ? ICON_LOCK : ICON_UNLOCK, onClick: () => { slot.locked = !slot.locked; ctx.commit(); } }),
       canRemove ? h('button', { class: 'iconbtn danger', title: 'Remove this part', html: ICON_BIN, onClick: async () => { if (!(await confirmBox({ title: 'Remove this part?', message: 'It is removed from the question. You can bring it back with Undo.', confirmLabel: 'Remove', danger: true }))) return; P.removeSlot(prep, qi, si); ctx.ui.sel = null; ctx.commit(); } }) : null),
     h('div', { class: 'dpath' }, h('b', {}, pickLine), slot.meta && slot.meta.multipart ? h('span', { class: 'tag' }, 'multipart') : null, slot.locked ? h('span', { class: 'tag lock' }, 'locked') : null),
-    isPool ? h('div', { class: 'poolline' }, h('span', { html: ICON_SHUFFLE }), h('span', {}, 'Drawn from pool: ', h('b', {}, poolInfo(slot).text)), h('button', { class: 'linkbtn', onClick: () => openPoolDialog(slot, qi, si) }, 'Choices…')) : null,
+    isPool ? h('div', { class: 'poolline' }, h('span', { html: ICON_POOL }), h('span', {}, 'Drawn from pool: ', h('b', {}, poolInfo(slot).text)), h('button', { class: 'linkbtn', onClick: () => openPoolDialog(slot, qi, si) }, 'Choices…')) : null,
     anyOpt ? h('div', { class: 'hint' }, `A different option comes up each time you re-roll. This one is: ${slot.meta.label}.`) : null,
     range ? h('div', { class: 'hint' }, range) : null,
     h('div', { class: 'dbtns' },

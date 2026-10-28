@@ -248,6 +248,8 @@ function tabLayout(el) {
       slider('Squash by up to', 'squash', 0.7, 1, 0.01, '', 'Smallest share of the space you set (0.85 = 85%).'),
       slider('Stretch by up to', 'stretch', 1, 1.6, 0.01, '', 'Largest share of the space you set (1.3 = 130%).'),
       h('label', { class: 'check' }, h('input', { type: 'checkbox', checked: L.nameLine, onChange: (e) => { L.nameLine = e.target.checked; ctx.commit({ builder: false, dirty: false }); } }), ' Name line on the title row')),
+    h('details', {}, h('summary', {}, 'Logo'),
+      h('label', { class: 'check' }, h('input', { type: 'checkbox', checked: !!L.logo, onChange: (e) => { L.logo = e.target.checked; ctx.commit({ builder: false, dirty: false }); } }), ' Show the logo at the top right of the title')),
     h('details', {}, h('summary', {}, 'Page breaks'),
       h('label', { class: 'check' }, h('input', { type: 'checkbox', checked: L.splitParts, onChange: (e) => { L.splitParts = e.target.checked; ctx.commit({ builder: false, dirty: false }); } }), ' Allow a question with several parts to continue on the next page'),
       h('div', { class: 'floor' }, 'Off by default: a question stays on one page. Parts are never cut in half.')),

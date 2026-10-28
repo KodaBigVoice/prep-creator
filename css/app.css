@@ -104,8 +104,8 @@ body.resizing{cursor:col-resize;user-select:none}
 .prow.nolab .lab{display:none}
 .prow.nolab .txt{grid-column:2/4}
 .prow .gut{display:flex;align-items:center;justify-content:flex-start}
-.poolico{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;margin-left:-3px;border:0;border-radius:6px;background:#efe8fb;color:#5b3cc4;padding:0}
-.poolico:hover{background:#e2d6f8}
+.poolico{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;margin-left:-3px;border:0;border-radius:6px;background:transparent;color:#a99bd8;padding:0}
+.poolico:hover{color:#6b4fc9}
 .poolico svg{display:block}
 .prow.sel{background:#f6f9ff}
 .prow .lab{color:var(--muted)}
@@ -129,7 +129,8 @@ body.resizing{cursor:col-resize;user-select:none}
 .abtn span{display:inline-flex}
 .detail .dbtns{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
 .detail .dint{display:flex;align-items:center;gap:4px;margin-top:8px;font-size:13px}
-.lockmark{font-size:12px}
+.lockmark{display:inline-flex;color:var(--accent)}
+.lockmark svg{width:13px;height:13px;display:block}
 .stepper{display:inline-flex;align-items:center;border:1px solid var(--line);border-radius:6px;overflow:hidden;background:#fff}
 .stepper button{border:0;background:#f3f5f8;width:22px;height:24px;line-height:1}
 .stepper button:hover{background:#e6eaf0}
@@ -247,6 +248,6 @@ body.resizing{cursor:col-resize;user-select:none}
 .undoredo{display:inline-flex;gap:2px}
 .undoredo .iconbtn{width:30px;height:30px}
 
-.detail .poolline{display:flex;align-items:center;gap:6px;margin-top:4px;font-size:12.5px;color:#4b3a8f}
+.detail .poolline{display:flex;align-items:center;gap:6px;margin-top:4px;font-size:12.5px;color:#7a63c4}
 .detail .poolline svg{display:block}
 .linkbtn{border:0;background:transparent;color:var(--accent);padding:0 2px;text-decoration:underline;font-size:12.5px}

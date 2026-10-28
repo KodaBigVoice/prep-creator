@@ -1,4 +1,5 @@
 // HTML for the printed sheets. Math is written {{like this}} in the question text.
+import { LOGO_URI } from '../data/logo.js';
 const esc = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;');
 
 export function mathToHTML(s, katex) {
@@ -56,17 +57,18 @@ export function aosHTML(unit, q, katex, { lineMM, factors, first, textOnly }) {
   return rows.join('');
 }
 
-export function headHTML(prep, katex, { rubric, name }) {
+const logoHTML = () => `<img class="logo" src="${LOGO_URI}" alt="">`;
+export function headHTML(prep, katex, { rubric, name, logo }) {
   const nameBit = name ? `<div class="name">Name<span></span></div>` : '';
   const rub = rubric && prep.rubricOn ? `<div class="intro">${esc(prep.rubricText)}</div>` : '';
-  return `<div class="head"><h1>${esc(prep.name)}</h1>${nameBit}</div>${rub}<hr class="rule">`;
+  return `<div class="head${logo ? ' has-logo' : ''}"><h1>${esc(prep.name)}</h1>${nameBit}${logo ? logoHTML() : ''}</div>${rub}<hr class="rule">`;
 }
 export function runHeadHTML(prep, page) {
   return `<div class="runhead"><span>${esc(prep.name)}</span><span>Page ${page}</span></div><hr class="runrule">`;
 }
 
 // ---- answers table --------------------------------------------------------
-export function answersHTML(prep, rows, katex, pageCount) {
+export function answersHTML(prep, rows, katex, pageCount, { logo = false } = {}) {
   const body = rows.map(r => `<tr><td class="c1">${r.ref}</td><td class="c2">${katex.renderToString(r.a, { throwOnError: false })}${r.edited ? '<span class="by-hand">written by you</span>' : ''}</td><td class="c3">${mathToHTML(r.w, katex)}</td></tr>`).join('');
-  return `<div class="head"><h1>${esc(prep.name)} – Answers</h1></div><hr class="rule"><table class="at"><thead><tr><th class="c1">Q</th><th class="c2">Answer</th><th class="c3">Working</th></tr></thead><tbody>${body}</tbody></table>`;
+  return `<div class="head${logo ? ' has-logo' : ''}"><h1>${esc(prep.name)} – Answers</h1>${logo ? logoHTML() : ''}</div><hr class="rule"><table class="at"><thead><tr><th class="c1">Q</th><th class="c2">Answer</th><th class="c3">Working</th></tr></thead><tbody>${body}</tbody></table>`;
 }
