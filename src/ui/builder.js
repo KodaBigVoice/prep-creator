@@ -15,6 +15,9 @@ const ICON_BIN = SV('<path d="M2.8 4.2h10.4M6.2 4.2V2.8h3.6v1.4M4.2 4.2l.6 9h6.4
 const ICON_SWAP = SV('<path d="M2.5 5.5h10M9.8 2.8l2.7 2.7-2.7 2.7M13.5 10.5h-10M6.2 7.8l-2.7 2.7 2.7 2.7"/>');
 const ICON_EDIT = SV('<path d="M2.8 13.2l.6-2.9 7.2-7.2a1.4 1.4 0 0 1 2 0l.3.3a1.4 1.4 0 0 1 0 2l-7.2 7.2-2.9.6zM9.6 4.1l2.3 2.3"/>');
 const ICON_MORE = '<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><circle cx="3.5" cy="8" r="1.3"/><circle cx="8" cy="8" r="1.3"/><circle cx="12.5" cy="8" r="1.3"/></svg>';
+const ICON_SHUFFLE = SV('<path d="M2 4.5h2.2c3.2 0 3.6 7 6.8 7H14M2 11.5h2.2c1 0 1.7-.7 2.3-1.6M14 4.5h-3c-1 0-1.7.7-2.3 1.6M12 2.5l2 2-2 2M12 9.5l2 2-2 2"/>');
+const ICON_SHUFFLE_S = ICON_SHUFFLE.replace('width="16" height="16"', 'width="12" height="12"');
+const poolInfo = (slot) => { const d = slot.def; if (d.mode !== 'pool') return null; const n = (d.candidates || []).filter(c => c.on !== false).length; return { label: d.label || 'Pool', n, text: `${d.label || 'Pool'} · ${n} choice${n === 1 ? '' : 's'}` }; };
 const fmt = (n) => (Math.round(n * 100) / 100).toString();
 
 function stepper({ value, onChange, step = 1, min = 0, manual = false, title }) {
@@ -62,10 +65,10 @@ export function renderBuilder(root) {
       const row = h('div', { class: 'prow' + (aos ? ' aos' : '') + (isRowSel ? ' sel' : '') },
         h('div', { class: 'lab' }, p.l ? `(${p.l})` : ''),
         h('div', { class: 'txt', title: 'Click for details and options', onClick: () => { ctx.ui.sel = isRowSel ? null : { q: qi, k }; ctx.hooks.builder(); },
-          html: T(p.text) + (p.calc ? ' <span class="badge">calculator</span>' : '') + (p.edited ? ' <span class="badge ed">edited</span>' : '') }),
+          html: T(p.text) + (p.calc ? ' <span class="badge">calculator</span>' : '') + (p.edited ? ' <span class="badge ed">edited</span>' : '') + (poolInfo(slot) && firstOfSlot ? ` <span class="poolmark" title="Pool: ${poolInfo(slot).text.replace(/"/g, '')}">${ICON_SHUFFLE_S}</span>` : '') }),
         h('div', { class: 'c' }, stepper({ value: p.marks, step: 1, min: 1, manual: manualM, title: 'Marks for this part', onChange: (v) => { P.setMarks(slot, p.pi, v); ctx.commit(); } })),
         aos ? h('div', { class: 'c' }, stepper({ value: p.lines, step: 0.5, min: 0.5, manual: manualL, title: 'Working space in ruled lines (decimals allowed)', onChange: (v) => { P.setLines(slot, p.pi, v); ctx.commit({ builder: true }); } })) : null,
-        h('div', { class: 'c' }, firstOfSlot ? h('button', { class: 'iconbtn', title: slot.locked ? 'Locked' : 'New numbers (same kind of question)', disabled: slot.locked, onClick: () => { P.rerollSlot(prep, slot); ctx.commit(); } }, '↻') : null));
+        h('div', { class: 'c' }, firstOfSlot ? h('button', { class: 'iconbtn', title: slot.locked ? 'Locked' : (poolInfo(slot) ? `New question from pool: ${poolInfo(slot).text}` : 'New numbers (same kind of question)'), disabled: slot.locked, onClick: () => { P.rerollSlot(prep, slot); ctx.commit(); }, ...(poolInfo(slot) ? { html: ICON_SHUFFLE } : {}) }, poolInfo(slot) ? null : '↻') : null));
       card.append(row);
       if (isRowSel) card.append(detailPanel(q, qi, slot, p.si, cq, p));
     });
@@ -91,7 +94,8 @@ function detailPanel(q, qi, slot, si, cq, part) {
     h('div', { class: 'dside' },
       h('button', { class: 'iconbtn boxed' + (slot.locked ? ' on' : ''), title: slot.locked ? 'Locked: re-roll will not change this. Click to unlock' : 'Lock: stop re-roll changing this question', html: slot.locked ? ICON_LOCK : ICON_UNLOCK, onClick: () => { slot.locked = !slot.locked; ctx.commit(); } }),
       canRemove ? h('button', { class: 'iconbtn danger', title: 'Remove this part', html: ICON_BIN, onClick: async () => { if (!(await confirmBox({ title: 'Remove this part?', message: 'It is removed from the question. You can bring it back with Undo.', confirmLabel: 'Remove', danger: true }))) return; P.removeSlot(prep, qi, si); ctx.ui.sel = null; ctx.commit(); } }) : null),
-    h('div', { class: 'dpath' }, h('b', {}, pickLine), isPool ? h('span', { class: 'tag pool' }, 'pool') : null, slot.meta && slot.meta.multipart ? h('span', { class: 'tag' }, 'multipart') : null, slot.locked ? h('span', { class: 'tag lock' }, 'locked') : null),
+    h('div', { class: 'dpath' }, h('b', {}, pickLine), slot.meta && slot.meta.multipart ? h('span', { class: 'tag' }, 'multipart') : null, slot.locked ? h('span', { class: 'tag lock' }, 'locked') : null),
+    isPool ? h('div', { class: 'poolline' }, h('span', { html: ICON_SHUFFLE }), h('span', {}, 'Drawn from pool: ', h('b', {}, poolInfo(slot).text)), h('button', { class: 'linkbtn', onClick: () => openPoolDialog(slot, qi, si) }, 'Choices…')) : null,
     anyOpt ? h('div', { class: 'hint' }, `A different option comes up each time you re-roll. This one is: ${slot.meta.label}.`) : null,
     range ? h('div', { class: 'hint' }, range) : null,
     h('div', { class: 'dbtns' },
@@ -102,7 +106,7 @@ function detailPanel(q, qi, slot, si, cq, part) {
         { label: '+ Add a part', onClick: () => addPart(qi) },
         q.slots.length > 1 ? { label: 'Make this its own question', sub: 'Take it out of the multipart question', onClick: () => { const nq = P.splitSlot(prep, qi, si); ctx.ui.sel = nq === null ? null : { q: nq, k: 0 }; ctx.commit(); } } : null,
         { sep: true },
-        isPool ? { label: 'Pool choices…', sub: 'Which questions re-roll can draw from', onClick: () => openPoolDialog(slot, qi, si) } : { label: 'Make this a pool…', sub: 'Re-roll picks from several questions you choose', onClick: () => { slot.def = { mode: 'pool', label: 'Pool', candidates: [{ pick: slot.pick, on: true }] }; ctx.commit(); openPoolDialog(slot, qi, si); } },
+        isPool ? null : { label: 'Make this a pool…', sub: 'Re-roll picks from several questions you choose', onClick: () => { slot.def = { mode: 'pool', label: 'Pool', candidates: [{ pick: slot.pick, on: true }] }; ctx.commit(); openPoolDialog(slot, qi, si); } },
         isPool ? { label: 'Stop being a pool', sub: 'Re-roll keeps this kind of question', onClick: () => { slot.def = { mode: 'fixed', pick: slot.pick }; ctx.commit(); } } : null,
         anyOpt ? { label: 'Keep this option', sub: 'Stop changing option when you re-roll', onClick: () => { slot.def = { mode: 'fixed', pick: slot.pick }; ctx.commit(); } } : null,
         { sep: true },
