@@ -53,7 +53,13 @@ export function openPicker({ title = 'Choose a question', current = null, confir
     setKids(list, mk(null, true), ...items.map(it => mk(it, false)), items.length ? null : h('div', { class: 'pk-none' }, 'No match'));
   }
   const scrollSel = (id) => { const el = cols[id].list.querySelector('.pk-it.sel'); if (el) { const l = cols[id].list; l.scrollTop = Math.max(0, el.offsetTop - l.clientHeight / 2 + el.offsetHeight / 2); } };
-  function drawAll(scroll = false) { ['topic', 'type', 'opt'].forEach(drawCol); if (scroll) ['topic', 'type', 'opt'].forEach(scrollSel); }
+  const ORDER = ['topic', 'type', 'opt'];
+  // keep = columns whose scroll position must not move (the one clicked and those to its left); the rest re-centre on their selection
+  function drawAll(scroll = false, keep = []) {
+    const tops = {}; keep.forEach(id => { tops[id] = cols[id].list.scrollTop; });
+    ORDER.forEach(drawCol);
+    ORDER.forEach(id => { if (keep.includes(id)) cols[id].list.scrollTop = tops[id]; else if (scroll) scrollSel(id); });
+  }
 
   function choose(id, val, { fromSearch = false } = {}) {
     if (id === 'topic') {
@@ -71,7 +77,7 @@ export function openPicker({ title = 'Choose a question', current = null, confir
       if (val) { const e = byKey[val]; st.type = e.typeId; st.topic = e.topic; st.f.topic = st.f.type = ''; cols.topic.input.value = cols.type.input.value = ''; }
     }
     st.seed = newSeed(); st.flags = null;
-    drawAll(true); renderPreview();
+    drawAll(true, fromSearch ? [] : ORDER.slice(0, ORDER.indexOf(id) + 1)); renderPreview();
   }
   const setFromKey = (key) => { const e = byKey[key]; if (!e) return; st.topic = e.topic; st.type = e.typeId; st.opt = e.key; st.f = { topic: '', type: '', opt: '' }; Object.values(cols).forEach(c => { c.input.value = ''; }); st.seed = newSeed(); st.flags = null; drawAll(true); renderPreview(); };
 
@@ -161,7 +167,7 @@ export function openPicker({ title = 'Choose a question', current = null, confir
   });
   results.style.display = 'none';
   if (current && byKey[current]) setFromKey(current);
-  else if (current && typeById[String(current).split(':')[0]]) { const t = typeById[String(current).split(':')[0]]; choose('type', t.id); }
+  else if (current && typeById[String(current).split(':')[0]]) { const t = typeById[String(current).split(':')[0]]; choose('type', t.id, { fromSearch: true }); }
   else { drawAll(); renderPreview(); }
   setTimeout(() => qIn.focus(), 30);
 }

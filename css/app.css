@@ -128,6 +128,7 @@ body.resizing{cursor:col-resize;user-select:none}
 .menu hr{border:0;border-top:1px solid var(--line2);margin:4px 0}
 .menu .lbl{padding:4px 10px;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
 .addrow{display:flex;gap:8px;margin:6px 0 0}
+.addrow .btn{flex:1;width:100%;padding:11px 14px;border-style:dashed}
 .empty{color:var(--muted);padding:40px 0;text-align:center}
 
 /* dialogs */
