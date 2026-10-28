@@ -103,14 +103,27 @@ function useSet(setId, presetId = undefined) {
 }
 function randomFor(setId) { autosavePrevious(); ctx.prep = finishNew(P.randomPrep(setId, 'x')); ctx.dirty = false; afterLoad(); }
 function blankFor(setId) { autosavePrevious(); ctx.prep = finishNew(P.newPrep({ set: setId, name: 'x', minutes: setById[setId].minutes })); ctx.prep.presetId = null; ctx.dirty = false; afterLoad(); }
-function afterLoad() { ctx.ui.sel = null; ctx.store.current = ctx.prep; ctx.commit({ toolbar: true }); ctx.dirty = false; ctx.hooks.status(); ctx.save(); }
-ctx.ui.afterLoad = () => { ctx.ui.sel = null; ctx.commit({ toolbar: true }); ctx.dirty = false; ctx.hooks.status(); };
+function afterLoad() { ctx.ui.sel = null; ctx.store.current = ctx.prep; ctx.resetHistory(); ctx.commit({ toolbar: true }); ctx.dirty = false; ctx.hooks.status(); ctx.save(); }
+ctx.ui.afterLoad = () => { ctx.ui.sel = null; ctx.resetHistory(); ctx.commit({ toolbar: true }); ctx.dirty = false; ctx.hooks.status(); };
 
 // ---------- top toolbar ----------
 const toolbar = h('div', { class: 'toolbar' });
 const saveStat = h('span', { class: 'savestat' });
 const SAVED_TEXT = { browser: 'Saved in browser', file: 'Saved to JSON file', download: 'JSON file downloaded' };
-ctx.hooks.status = () => { saveStat.textContent = ctx.dirty ? 'Unsaved changes' : (SAVED_TEXT[ctx.ui.savedTo] || SAVED_TEXT.browser); saveStat.classList.toggle('dirty', !!ctx.dirty); };
+const ICON_UNDO = '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5.2 3 2.8 5.5 5.2 8M3 5.5h6a4 4 0 0 1 0 8H6"/></svg>';
+const ICON_REDO = '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M10.8 3l2.4 2.5L10.8 8M13 5.5H7a4 4 0 0 0 0 8h3"/></svg>';
+const undoBtn = h('button', { class: 'iconbtn', 'aria-label': 'Undo', html: ICON_UNDO, onClick: () => ctx.undo() });
+const redoBtn = h('button', { class: 'iconbtn', 'aria-label': 'Redo', html: ICON_REDO, onClick: () => ctx.redo() });
+const syncUndo = () => { undoBtn.disabled = !ctx.canUndo(); redoBtn.disabled = !ctx.canRedo(); undoBtn.title = 'Undo (Ctrl+Z)'; redoBtn.title = 'Redo (Ctrl+Y)'; };
+document.addEventListener('keydown', (e) => {
+  if (!(e.ctrlKey || e.metaKey) || e.altKey) return;
+  const t = e.target, k = e.key.toLowerCase();
+  if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable)) return;   // leave the browser's own text undo alone
+  if (document.querySelector('.scrim')) return;
+  if (k === 'z' && !e.shiftKey) { e.preventDefault(); ctx.undo(); }
+  else if (k === 'y' || (k === 'z' && e.shiftKey)) { e.preventDefault(); ctx.redo(); }
+});
+ctx.hooks.status = () => { syncUndo(); saveStat.textContent = ctx.dirty ? 'Unsaved changes' : (SAVED_TEXT[ctx.ui.savedTo] || SAVED_TEXT.browser); saveStat.classList.toggle('dirty', !!ctx.dirty); };
 function renderToolbar() {
   const prep = ctx.prep;
   const nameIn = h('input', { type: 'text', class: 'namebox', value: prep.name, 'aria-label': 'Prep name', onInput: (e) => { prep.name = e.target.value; prep.nameAuto = false; ctx.commit({ builder: false }); } });
@@ -122,6 +135,7 @@ function renderToolbar() {
     h('div', { class: 'field' }, h('label', {}, 'Name'), nameIn),
     h('span', { class: 'sp' }),
     saveStat,
+    h('span', { class: 'undoredo' }, undoBtn, redoBtn),
     h('span', { class: 'splitbtn' },
       h('button', { class: 'btn', onClick: () => doSave(), title: saveMode() === 'file' ? 'Save to the JSON file (and in this browser)' : 'Save in this browser' }, 'Save'),
       h('button', { class: 'btn arrow', 'aria-label': 'Save options', onClick: (e) => saveMenu(e.currentTarget) }, '▾')),
@@ -387,6 +401,7 @@ function init() {
   if (store.current && store.current.questions && store.current.set && setById[store.current.set]) { ctx.prep = store.current; ctx.dirty = false; }
   else useSet(setById[last] ? last : 'Y7 Additional');
   if (ctx.prep.rubricOn === undefined) ctx.prep.rubricOn = false;
+  ctx.resetHistory();
   ctx.ui.sidebar = !!store.settings.sidebar;
   applyWidths(); renderToolbar(); renderSidebar(); renderBuilder(builderEl); relayout();
   refreshLinked().then(renderToolbar);

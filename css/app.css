@@ -109,7 +109,10 @@ body.resizing{cursor:col-resize;user-select:none}
 .detail{position:relative;padding:8px 56px 12px 44px;background:#f6f9ff;border-top:1px dashed #c9d6f3;border-radius:0 0 8px 8px}
 .detail .dpath{display:flex;align-items:center;flex-wrap:wrap;gap:4px;font-size:13px}
 .detail .dside{position:absolute;right:12px;top:6px;display:flex;flex-direction:column;gap:13px;width:34px;align-items:center}
-.detail .dside .iconbtn.on{color:var(--accent);background:var(--accent-soft)}
+.detail .dside .iconbtn{width:30px;height:28px}
+.iconbtn.boxed{background:#fff;border-color:var(--line);color:#4b5563}
+.iconbtn.boxed:hover:not(:disabled){background:#f1f4f9;border-color:#c3cad4}
+.detail .dside .iconbtn.on{color:var(--accent);background:var(--accent-soft);border-color:#9db5ee}
 .iconbtn.danger{color:#b42318;background:#fdecea;border-color:#f1c2bd}
 .iconbtn.danger:hover:not(:disabled){background:#fadad6;border-color:#e8a39b}
 .abar{display:inline-flex;background:#fff;border:1px solid #c9d6f3;border-radius:9px;overflow:hidden;box-shadow:0 1px 2px rgba(31,79,216,.08)}
@@ -233,3 +236,6 @@ body.resizing{cursor:col-resize;user-select:none}
   body.printing-both #print-answers{display:block}
   body.printing-both #pages .sheet:last-child{break-after:page;page-break-after:always}
 }
+
+.undoredo{display:inline-flex;gap:2px}
+.undoredo .iconbtn{width:30px;height:30px}

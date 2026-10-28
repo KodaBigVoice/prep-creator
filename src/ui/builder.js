@@ -52,7 +52,7 @@ export function renderBuilder(root) {
           h('span', { class: 'acts-sep' }),
           h('button', { class: 'iconbtn', title: 'Move up', onClick: () => { P.moveQuestion(prep, qi, -1); ctx.ui.sel = sel && sel.q === qi ? { ...sel, q: Math.max(0, qi - 1) } : null; ctx.commit(); } }, '↑'),
           h('button', { class: 'iconbtn', title: 'Move down', onClick: () => { P.moveQuestion(prep, qi, 1); ctx.ui.sel = sel && sel.q === qi ? { ...sel, q: Math.min(prep.questions.length - 1, qi + 1) } : null; ctx.commit(); } }, '↓'),
-          h('button', { class: 'iconbtn', title: 'Remove this question', onClick: () => { prep.questions.splice(qi, 1); ctx.ui.sel = null; ctx.commit(); } }, '✕'))));
+          h('button', { class: 'iconbtn', title: 'Remove this question', onClick: async () => { if (!(await confirmBox({ title: `Remove question ${qi + 1}?`, message: 'The whole question is removed from this prep. You can bring it back with Undo.', confirmLabel: 'Remove', danger: true }))) return; prep.questions.splice(qi, 1); ctx.ui.sel = null; ctx.commit(); } }, '✕'))));
     if (cq.stem) card.append(h('div', { class: 'stemrow' }, h('div'), h('div', { class: 'txt', html: T(cq.stem) }), h('div'), h('div')));
     cq.parts.forEach((p, k) => {
       const slot = q.slots[p.si];
@@ -89,8 +89,8 @@ function detailPanel(q, qi, slot, si, cq, part) {
   const canRemove = cq.parts.length > 1 || prep.questions.length > 0;
   return h('div', { class: 'detail' },
     h('div', { class: 'dside' },
-      h('button', { class: 'iconbtn' + (slot.locked ? ' on' : ''), title: slot.locked ? 'Locked: re-roll will not change this. Click to unlock' : 'Lock: stop re-roll changing this question', html: slot.locked ? ICON_LOCK : ICON_UNLOCK, onClick: () => { slot.locked = !slot.locked; ctx.commit(); } }),
-      canRemove ? h('button', { class: 'iconbtn danger', title: 'Remove this part', html: ICON_BIN, onClick: () => { P.removeSlot(prep, qi, si); ctx.ui.sel = null; ctx.commit(); } }) : null),
+      h('button', { class: 'iconbtn boxed' + (slot.locked ? ' on' : ''), title: slot.locked ? 'Locked: re-roll will not change this. Click to unlock' : 'Lock: stop re-roll changing this question', html: slot.locked ? ICON_LOCK : ICON_UNLOCK, onClick: () => { slot.locked = !slot.locked; ctx.commit(); } }),
+      canRemove ? h('button', { class: 'iconbtn danger', title: 'Remove this part', html: ICON_BIN, onClick: async () => { if (!(await confirmBox({ title: 'Remove this part?', message: 'It is removed from the question. You can bring it back with Undo.', confirmLabel: 'Remove', danger: true }))) return; P.removeSlot(prep, qi, si); ctx.ui.sel = null; ctx.commit(); } }) : null),
     h('div', { class: 'dpath' }, h('b', {}, pickLine), isPool ? h('span', { class: 'tag pool' }, 'pool') : null, slot.meta && slot.meta.multipart ? h('span', { class: 'tag' }, 'multipart') : null, slot.locked ? h('span', { class: 'tag lock' }, 'locked') : null),
     anyOpt ? h('div', { class: 'hint' }, `A different option comes up each time you re-roll. This one is: ${slot.meta.label}.`) : null,
     range ? h('div', { class: 'hint' }, range) : null,
