@@ -111,7 +111,12 @@ body.resizing{cursor:col-resize;user-select:none}
 .detail .dside{position:absolute;right:12px;top:6px;display:flex;flex-direction:column;gap:2px;width:34px;align-items:center}
 .detail .dside .iconbtn.on{color:var(--accent);background:var(--accent-soft)}
 .iconbtn.danger:hover:not(:disabled){color:#b42318;background:#fdecea}
-.detail .dbtns{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.abar{display:inline-flex;background:#fff;border:1px solid #c9d6f3;border-radius:9px;overflow:hidden;box-shadow:0 1px 2px rgba(31,79,216,.08)}
+.abtn{display:inline-flex;align-items:center;gap:7px;border:0;background:transparent;padding:7px 15px;font-size:13.5px;font-weight:500;color:#2a3a5c}
+.abtn+.abtn{border-left:1px solid #dbe4f8}
+.abtn:hover{background:var(--accent-soft);color:var(--accent)}
+.abtn span{display:inline-flex}
+.detail .dbtns{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
 .detail .dint{display:flex;align-items:center;gap:4px;margin-top:8px;font-size:13px}
 .lockmark{font-size:12px}
 .stepper{display:inline-flex;align-items:center;border:1px solid var(--line);border-radius:6px;overflow:hidden;background:#fff}

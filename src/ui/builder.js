@@ -12,6 +12,9 @@ const SV = (d) => `<svg width="16" height="16" viewBox="0 0 16 16" fill="none" s
 const ICON_LOCK = SV('<rect x="3.2" y="7" width="9.6" height="6.8" rx="1.4"/><path d="M5.2 7V5.2a2.8 2.8 0 0 1 5.6 0V7"/>');
 const ICON_UNLOCK = SV('<rect x="3.2" y="7" width="9.6" height="6.8" rx="1.4"/><path d="M5.2 7V5.2a2.8 2.8 0 0 1 5.4-1"/>');
 const ICON_BIN = SV('<path d="M2.8 4.2h10.4M6.2 4.2V2.8h3.6v1.4M4.2 4.2l.6 9h6.4l.6-9M6.6 6.6v4.2M9.4 6.6v4.2"/>');
+const ICON_SWAP = SV('<path d="M2.5 5.5h10M9.8 2.8l2.7 2.7-2.7 2.7M13.5 10.5h-10M6.2 7.8l-2.7 2.7 2.7 2.7"/>');
+const ICON_EDIT = SV('<path d="M2.8 13.2l.6-2.9 7.2-7.2a1.4 1.4 0 0 1 2 0l.3.3a1.4 1.4 0 0 1 0 2l-7.2 7.2-2.9.6zM9.6 4.1l2.3 2.3"/>');
+const ICON_MORE = '<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><circle cx="3.5" cy="8" r="1.3"/><circle cx="8" cy="8" r="1.3"/><circle cx="12.5" cy="8" r="1.3"/></svg>';
 const fmt = (n) => (Math.round(n * 100) / 100).toString();
 
 function stepper({ value, onChange, step = 1, min = 0, manual = false, title }) {
@@ -79,6 +82,7 @@ function detailPanel(q, qi, slot, si, cq, part) {
   const range = slotParts.length > 1 ? `Applies to parts (${slotParts[0].l})–(${slotParts[slotParts.length - 1].l})` : null;
   const flagsInt = slot.flags ? slot.flags.integer !== false : true;
   const btn = (label, fn, opts = {}) => h('button', { class: 'btn small' + (opts.danger ? ' danger' : ''), disabled: opts.disabled, title: opts.title, onClick: fn }, label);
+  const abtn = (icon, label, fn, title) => h('button', { class: 'abtn', title, onClick: fn }, h('span', { html: icon }), label);
   const isPool = slot.def.mode === 'pool';
   const anyOpt = slot.def.mode === 'fixed' && slot.def.pick && slot.def.pick.endsWith(':*');
   const pickLine = anyOpt ? pickName(slot.def.pick) + ' › any option' : pickName(slot.pick);
@@ -91,9 +95,10 @@ function detailPanel(q, qi, slot, si, cq, part) {
     anyOpt ? h('div', { class: 'hint' }, `A different option comes up each time you re-roll. This one is: ${slot.meta.label}.`) : null,
     range ? h('div', { class: 'hint' }, range) : null,
     h('div', { class: 'dbtns' },
-      btn('Replace…', () => changeSlot(q, qi, slot), { title: 'Swap this for a different question' }),
-      btn('Edit…', () => openEditDialog(slot, () => ctx.commit()), { title: 'Change the wording or the answer' }),
-      h('button', { class: 'btn small', 'data-menu-anchor': '', onClick: (e) => showMenu(e.currentTarget, [
+      h('div', { class: 'abar' },
+      abtn(ICON_SWAP, 'Replace', () => changeSlot(q, qi, slot), 'Swap this for a different question'),
+      abtn(ICON_EDIT, 'Edit', () => openEditDialog(slot, () => ctx.commit()), 'Change the wording or the answer'),
+      h('button', { class: 'abtn', title: 'More options', 'data-menu-anchor': '', onClick: (e) => showMenu(e.currentTarget, [
         { label: '+ Add a part', onClick: () => addPart(qi) },
         q.slots.length > 1 ? { label: 'Make this its own question', sub: 'Take it out of the multipart question', onClick: () => { const nq = P.splitSlot(prep, qi, si); ctx.ui.sel = nq === null ? null : { q: nq, k: 0 }; ctx.commit(); } } : null,
         { sep: true },
@@ -102,7 +107,7 @@ function detailPanel(q, qi, slot, si, cq, part) {
         anyOpt ? { label: 'Keep this option', sub: 'Stop changing option when you re-roll', onClick: () => { slot.def = { mode: 'fixed', pick: slot.pick }; ctx.commit(); } } : null,
         { sep: true },
         { label: 'Reset marks and lines', onClick: () => { slot.marksManual = slot.marksManual.map(() => false); slot.linesManual = slot.linesManual.map(() => false); P.reseed(slot, slot.seed); ctx.commit(); } },
-      ].filter(Boolean)) }, 'More ▾')),
+      ].filter(Boolean)) }, h('span', { html: ICON_MORE }), 'More'))),
     slot.meta.integer ? h('label', { class: 'dint' }, h('input', { type: 'checkbox', checked: flagsInt, onChange: () => { P.setFlags(slot, { integer: !flagsInt }); ctx.commit(); } }), ' Integer answers only') : null);
 }
 
