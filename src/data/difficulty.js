@@ -27,7 +27,7 @@ export const VARIANT_D = {
   'equations-brackets:one': 4.9, 'equations-brackets:neg': 5.3, 'equations-brackets:xside': 5.7, 'equations-brackets:both': 5.9, 'equations-brackets:sub': 6.2,
   'equations-fraction:split': 5.8, 'equations-fraction:top': 6.3, 'equations-fraction:eq': 6.8,
   'equations-two-fractions:sum': 6.5, 'equations-two-fractions:coef': 6.8, 'equations-two-fractions:cross': 7, 'equations-two-fractions:diff': 7.5,
-  'expand-then-solve:std': 7.6,
+  'expand-then-solve:single': 7.2, 'expand-then-solve:std': 7.6,
   'equations-quadratic-simple:pure': 7.4, 'equations-quadratic-simple:coef': 7.8, 'equations-quadratic-simple:const': 8.2, 'equations-quadratic-simple:full': 8.6, 'equations-quadratic-simple:sub': 9,
   'equations-denominator:num': 8.4, 'equations-denominator:add': 8.8, 'equations-denominator:plus': 9.2,
 

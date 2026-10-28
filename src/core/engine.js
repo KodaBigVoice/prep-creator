@@ -34,7 +34,7 @@ export function entries() {
     t.variants.forEach((v, vi) => {
       out.push({
         key: pickKey(t, v), typeId: t.id, variantId: v.id, topic: t.topic, type: t.type, label: v.label,
-        multipart: !!t.multipart, levels: t.levels || [],
+        multipart: !!(v.multipart ?? t.multipart), levels: t.levels || [],
         d: variantD(t, v) ?? 5, td, ti, vi,
         hay: [t.topic, t.type, v.label, t.search || '', t.code || ''].join(' ').toLowerCase(),
       });
@@ -62,7 +62,7 @@ export function generate(pick, seed = newSeed(), flags = null) {
   });
   return {
     pick: pickKey(t, v), typeId: t.id, seed, flags: fl,
-    topic: t.topic, type: t.type, label: v.label, multipart: !!t.multipart,
+    topic: t.topic, type: t.type, label: v.label, multipart: !!(v.multipart ?? t.multipart),
     stem: raw.stem || null, parts,
   };
 }

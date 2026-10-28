@@ -4,15 +4,16 @@ import { xAns, cx } from './equations.js';
 
 export default {
   id: 'expand-then-solve',
-  topic: 'Equations', type: 'Expand, then solve (hence)', code: 'EQK2',
+  topic: 'Equations', type: 'Two brackets, then solve', code: 'EQK2',
   levels: ['Core', 'Additional'],
   multipart: true,
   search: 'expand and simplify hence solve equation multipart chain',
   verb: '', marks: 2, lines: 4,
   variants: [
-    { id: 'std', label: 'a(bx ± c) ± d(ex ± f) = k', params: {} },
+    { id: 'single', label: 'one question: solve a(bx ± c) ± d(ex ± f) = k', params: { single: true }, multipart: false },
+    { id: 'std', label: 'two parts: expand and simplify, then hence solve', params: {} },
   ],
-  generate(r) {
+  generate(r, v) {
     const [a, b, c, d, e, f, x0, sg] = r.until(() => {
       const a = r.int(2, 6), b = r.int(1, 5), c = r.int(1, 8) * r.sign(), d = r.int(2, 6), e = r.int(1, 5), f = r.int(1, 8) * r.sign();
       const sg = r.chance(0.65) ? -1 : 1, p = a * b + sg * d * e, q = a * c + sg * d * f;
@@ -26,6 +27,10 @@ export default {
     const k = res.coef('x1').mul(x0).add(res.coef('')).n;     // value of the expression at x0
     const eq = `${expr} = ${k}`;
     const sol = new F(x0);
+    if (v.single) {
+      const w = `${P.v('x', 1, a * b).add(P.c(a * c)).tex()} ${sg < 0 ? `- (${P.v('x', 1, d * e).add(P.c(d * f)).tex()})` : `+ ${P.v('x', 1, d * e).add(P.c(d * f)).tex()}`} = ${k};\\ ${res.tex()} = ${k};\\ ${cx(res.coef('x1').n)}x = ${k - res.coef('').n};\\ x = ${x0}`;
+      return { parts: [{ verb: 'Solve', body: `{{${eq}}}`, a: xAns(sol), w: `{{${w}}}`, m: 3, lines: 6, chk: { k: 'solve', eq, v: 'x' } }] };
+    }
     return {
       parts: [
         { l: 'a', body: `Expand and simplify {{${expr}}}`, a: res.tex(), w: `{{${P.v('x', 1, a * b).add(P.c(a * c)).tex()} ${sg < 0 ? `- (${P.v('x', 1, d * e).add(P.c(d * f)).tex()})` : `+ ${P.v('x', 1, d * e).add(P.c(d * f)).tex()}`} = ${res.tex()}}}`, m: 2, lines: 4, chk: { k: 'equiv', q: expr, a: res.tex() } },
