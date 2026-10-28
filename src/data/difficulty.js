@@ -14,8 +14,19 @@ export const VARIANT_D = {
   'indices-multiply:one': 3, 'indices-multiply:two': 4, 'indices-multiply:neg': 5,
   'indices-divide:div': 4, 'indices-divide:frac': 5,
 
-  'expand-single:pos': 2, 'expand-single:neg': 3, 'expand-single:two': 4,
-  'expand-two-subtract:lin': 6, 'expand-two-subtract:two': 8,
+  // Expanding brackets, in ladder order
+  'expand-number:pos': 1.5, 'expand-number:neg': 2.2, 'expand-number:two': 2.6, 'expand-number:three': 3.1,
+  'expand-letter:x': 3, 'expand-letter:nx': 3.5, 'expand-letter:neg': 4, 'expand-letter:two': 4.5,
+  'expand-simplify-add:num': 4, 'expand-simplify-add:neg': 4.5, 'expand-simplify-add:letter': 5.1,
+  'expand-simplify-subtract:lin': 5, 'expand-simplify-subtract:bare': 5.4, 'expand-simplify-subtract:two': 6.2,
+  'expand-powers:pure': 6, 'expand-powers:num': 6.4, 'expand-powers:two': 6.8,
+  'expand-powers-high:pure': 6.9, 'expand-powers-high:num': 7.3, 'expand-powers-high:two': 7.7,
+  'expand-double:pos': 7.6, 'expand-double:mixed': 8, 'expand-double:neg': 8.4,
+  'expand-double-coef:std': 8.4, 'expand-double-coef:both': 8.6, 'expand-double-coef:two': 8.8,
+  'expand-square:x': 8.6, 'expand-square:ax': 9, 'expand-square:two': 9.4,
+  'expand-dots:x': 8.9, 'expand-dots:ax': 9.3, 'expand-dots:two': 9.7,
+  'expand-simplify-double:sum': 9.5, 'expand-simplify-double:sq': 9.7, 'expand-simplify-double:coef': 10,
+  'expand-triple:three': 9.9, 'expand-triple:sq': 10,
   // Factorising, in ladder order
   'factorise-number:two': 2, 'factorise-number:xy': 2.5, 'factorise-number:three': 3.2,
   'factorise-letter:sq': 3.4, 'factorise-letter:mix': 3.9,

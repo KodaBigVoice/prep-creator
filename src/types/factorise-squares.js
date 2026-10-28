@@ -5,7 +5,7 @@ import { product, LETTERS } from './factorising.js';
 export default {
   id: 'factorise-squares',
   topic: 'Factorising', type: 'Difference of two squares', code: 'FAC8',
-  levels: ['Additional'],
+  levels: ['Further'],
   search: 'factorise difference of two squares x squared minus',
   verb: 'Factorise', marks: 2, lines: 3,
   variants: [

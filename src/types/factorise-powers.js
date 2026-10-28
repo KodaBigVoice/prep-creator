@@ -4,8 +4,8 @@ import { mono, innerOk, commonFactor } from './factorising.js';
 
 const POOL = ['x', 'y', 'a', 'b', 'n', 'p', 't'];
 
-export function powersGenerate(r, v, lo, hi) {
-  const [out, inner] = r.until(() => {
+export function powersPair(r, v, lo, hi) {
+  return r.until(() => {
     const [l, m] = r.sample(POOL, 2), k = r.int(2, 6), p = r.int(1, 5), q = r.int(1, 7) * r.sign();
     const e = (a, b) => r.int(a, b);
     let out, inner;
@@ -25,6 +25,9 @@ export function powersGenerate(r, v, lo, hi) {
     }
     return innerOk(inner) ? [out, inner] : null;
   });
+}
+export function powersGenerate(r, v, lo, hi) {
+  const [out, inner] = powersPair(r, v, lo, hi);
   return commonFactor(out, inner);
 }
 

@@ -5,12 +5,16 @@ import { VARIANT_D } from '../data/difficulty.js';
 
 export const TYPES = ALL;
 export const typeById = Object.fromEntries(ALL.map(t => [t.id, t]));
-export const LEVELS = ['Foundation', 'Core', 'Additional'];
+export const LEVELS = ['Foundation', 'Core', 'Additional', 'Further'];
+// the levels an option belongs to: its own list if it has one, otherwise its type's
+export const levelsOf = (t, v) => v.levels || t.levels || [];
 
 // Types that were split or renamed keep working: older saved preps and presets still point at the old names.
 const ALIAS = {
   'equations-simple': 'equations-one-step',
   'factorise-common': 'factorise-number', 'factorise-common:num': 'factorise-number:two', 'factorise-common:one': 'factorise-number-letter:std', 'factorise-common:two': 'factorise-two-letters:xy',
+  'expand-single': 'expand-number', 'expand-single:pos': 'expand-number:pos', 'expand-single:neg': 'expand-number:neg', 'expand-single:two': 'expand-number:two',
+  'expand-two-subtract': 'expand-simplify-subtract', 'expand-two-subtract:lin': 'expand-simplify-subtract:lin', 'expand-two-subtract:two': 'expand-simplify-subtract:two',
   'equations-simple:one': 'equations-one-step:add', 'equations-simple:two': 'equations-two-step:std', 'equations-simple:frac': 'equations-two-step:frac',
 };
 export const canon = (p) => ALIAS[p] ?? p;
@@ -35,7 +39,7 @@ export function entries() {
     t.variants.forEach((v, vi) => {
       out.push({
         key: pickKey(t, v), typeId: t.id, variantId: v.id, topic: t.topic, type: t.type, label: v.label,
-        multipart: !!(v.multipart ?? t.multipart), levels: t.levels || [],
+        multipart: !!(v.multipart ?? t.multipart), levels: levelsOf(t, v),
         d: variantD(t, v) ?? 5, td, ti, vi,
         hay: [t.topic, t.type, v.label, t.search || '', t.code || ''].join(' ').toLowerCase(),
       });

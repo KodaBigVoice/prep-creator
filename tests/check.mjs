@@ -5,7 +5,7 @@ import vm from 'node:vm';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { TYPES, generate, hasIntegerFlag, variantD } from '../src/core/engine.js';
+import { TYPES, generate, hasIntegerFlag, variantD, LEVELS, levelsOf } from '../src/core/engine.js';
 import { VARIANT_D } from '../src/data/difficulty.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -19,14 +19,14 @@ const dumpFile = dumpIdx >= 0 ? args[dumpIdx + 1] : null;
 const registered = new Set(TYPES.map(t => t.id));
 const files = fs.readdirSync(path.join(here, '../src/types')).filter(f => f.endsWith('.js') && f !== 'index.js');
 const idx = fs.readFileSync(path.join(here, '../src/types/index.js'), 'utf8');
-const NONTYPE = new Set(['fractions.js', 'equations.js', 'factorising.js']);          // shared helper files
+const NONTYPE = new Set(['fractions.js', 'equations.js', 'factorising.js', 'expanding.js']);          // shared helper files
 const unregistered = files.filter(f => !NONTYPE.has(f) && !idx.includes(`./${f}`));
 
 const FORBIDDEN = [/leave your answer/i, /simplest form/i, /as a mixed number/i, /undefined/, /NaN/, /\bwork out the value of\b.*\bwork out\b/i, /  +/];
 const problems = []; const dump = []; const stats = [];
 // every option needs a difficulty number, and the table must not mention options that no longer exist
 const known = new Set();
-for (const t of TYPES) for (const v of t.variants) { known.add(`${t.id}:${v.id}`); if (variantD(t, v) === null) problems.push(`${t.id}:${v.id}: no difficulty set (src/data/difficulty.js)`); }
+for (const t of TYPES) for (const v of t.variants) { if (!levelsOf(t, v).length || levelsOf(t, v).some(l => !LEVELS.includes(l))) problems.push(`${t.id}:${v.id}: bad levels ${JSON.stringify(levelsOf(t, v))}`); known.add(`${t.id}:${v.id}`); if (variantD(t, v) === null) problems.push(`${t.id}:${v.id}: no difficulty set (src/data/difficulty.js)`); }
 for (const k of Object.keys(VARIANT_D)) if (!known.has(k)) problems.push(`difficulty.js has an unknown option: ${k}`);
 const T = (s, where) => {
   const segs = [];

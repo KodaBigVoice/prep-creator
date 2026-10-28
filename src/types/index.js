@@ -7,8 +7,18 @@ import fractionsMultiply from './fractions-multiply.js';
 import fractionsDivide from './fractions-divide.js';
 import indicesMultiply from './indices-multiply.js';
 import indicesDivide from './indices-divide.js';
-import expandSingle from './expand-single.js';
-import expandTwoSubtract from './expand-double-subtract.js';
+import expandNumber from './expand-number.js';
+import expandLetter from './expand-letter.js';
+import expandSimplifyAdd from './expand-simplify-add.js';
+import expandSimplifySubtract from './expand-simplify-subtract.js';
+import expandPowers from './expand-powers.js';
+import expandPowersHigh from './expand-powers-high.js';
+import expandDouble from './expand-double.js';
+import expandDoubleCoef from './expand-double-coef.js';
+import expandSquare from './expand-square.js';
+import expandDots from './expand-dots.js';
+import expandSimplifyDouble from './expand-simplify-double.js';
+import expandTriple from './expand-triple.js';
 import factoriseNumber from './factorise-number.js';
 import factoriseLetter from './factorise-letter.js';
 import factoriseNumberLetter from './factorise-number-letter.js';
@@ -61,7 +71,7 @@ import problemSolving from './problem-solving.js';
 export default [
   bidmasStandard, bidmasNegatives,
   fractionsAdd, fractionsSubtract, fractionsMultiply, fractionsDivide,
-  indicesMultiply, indicesDivide, expandSingle, expandTwoSubtract, factoriseNumber, factoriseLetter, factoriseNumberLetter, factoriseTwoLetters, factorisePowers, factorisePowersHigh, factoriseQuadratic, factoriseSquares, factoriseAx2, factoriseFull,
+  indicesMultiply, indicesDivide, expandNumber, expandLetter, expandSimplifyAdd, expandSimplifySubtract, expandPowers, expandPowersHigh, expandDouble, expandDoubleCoef, expandSquare, expandDots, expandSimplifyDouble, expandTriple, factoriseNumber, factoriseLetter, factoriseNumberLetter, factoriseTwoLetters, factorisePowers, factorisePowersHigh, factoriseQuadratic, factoriseSquares, factoriseAx2, factoriseFull,
   equationsOneStep, equationsTwoStep, equationsBothSides, equationsBothSidesRight, equationsBothSidesNegative, equationsBrackets, equationsFraction, equationsTwoFractions, expandThenSolve, equationsQuadraticSimple, equationsQuadraticFactorise, equationsDenominator,
   substitution, pythagoras, hcfLcm, primeFactors, percentageOfAmount, percentageChange, percentageChangeFind, reversePercentages, compoundInterest, ratioShare, ratioDifference, proportionDirect, proportionInverse, speedDistanceTime, circles, areaShapes, volumePrisms, unitsMetric, standardForm, simultaneous, rounding, averages, meanUnknown, probability, problemSolving,
 ];

@@ -7,7 +7,7 @@ const br = (v, c) => (c < 0 ? `${v} - ${-c}` : `${v} + ${c}`);
 export default {
   id: 'factorise-quadratic',
   topic: 'Factorising', type: 'Quadratics x² + bx + c', code: 'FAC7',
-  levels: ['Additional'],
+  levels: ['Further'],
   search: 'factorise quadratic trinomial double brackets x squared',
   verb: 'Factorise', marks: 2, lines: 3,
   variants: [

@@ -6,7 +6,7 @@ const br = (c) => (c < 0 ? `x - ${-c}` : `x + ${c}`);
 export default {
   id: 'factorise-full',
   topic: 'Factorising', type: 'Factorise fully (several steps)', code: 'FAC10',
-  levels: ['Additional'],
+  levels: ['Further'],
   search: 'factorise fully common factor then double brackets difference of two squares cubic',
   verb: 'Factorise fully', marks: 3, lines: 4,
   variants: [

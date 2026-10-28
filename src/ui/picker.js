@@ -7,7 +7,7 @@ import { mathToHTML } from '../layout/render.js';
 
 const ALL = entries().map(e => ({ ...e, lv: [...new Set(e.levels.map(l => (l === 'Foundation' ? 'Core' : l)))] }));
 const byKey = Object.fromEntries(ALL.map(e => [e.key, e]));
-const LEVEL_MODES = [['both', 'Core and Additional'], ['Core', 'Core only'], ['Additional', 'Additional only']];
+const LEVEL_MODES = [['both', 'All levels'], ['Core', 'Core'], ['Additional', 'Additional'], ['Further', 'Further (beyond Additional)']];
 const tokens = (s) => s.toLowerCase().split(/\s+/).filter(Boolean);
 
 export function openPicker({ title = 'Choose a question', current = null, confirmLabel = 'Use this question', onPick, extraButtons = [] }) {
@@ -37,7 +37,7 @@ export function openPicker({ title = 'Choose a question', current = null, confir
   const optItems = () => {
     const list = lvAll().filter(e => (!st.topic || e.topic === st.topic) && (!st.type || e.typeId === st.type))
       .sort((a, b) => (st.type ? (a.d - b.d || a.vi - b.vi) : (a.topic.localeCompare(b.topic) || a.td - b.td || a.ti - b.ti || a.d - b.d || a.vi - b.vi)))
-      .map(e => ({ id: e.key, name: e.label, sub: st.type ? '' : e.type, multipart: e.multipart }));
+      .map(e => ({ id: e.key, name: e.label, sub: st.type ? '' : e.type, multipart: e.multipart, further: e.lv.length === 1 && e.lv[0] === 'Further' }));
     if (st.type) list.forEach((it, i) => { it.rank = i + 1; });
     return list;
   };
@@ -49,7 +49,7 @@ export function openPicker({ title = 'Choose a question', current = null, confir
     const items = itemsOf[id]().filter(it => toks.every(t => (it.name + ' ' + (it.sub || '')).toLowerCase().includes(t)));
     const cur = st[id];
     const mk = (it, any) => h('div', { class: 'pk-it' + ((any ? cur === null : cur === it.id) ? ' sel' : ''), role: 'option', 'aria-selected': any ? cur === null : cur === it.id, 'data-id': any ? '' : it.id, onClick: () => choose(id, any ? null : it.id) },
-      h('span', { class: 'rk' }, !any && it.rank ? String(it.rank) : ''), h('span', { class: 'nm' }, any ? 'Any' : it.name), !any && it.multipart ? h('span', { class: 'badge' }, 'multipart') : null, !any && it.sub ? h('span', { class: 'sub' }, it.sub) : null);
+      h('span', { class: 'rk' }, !any && it.rank ? String(it.rank) : ''), h('span', { class: 'nm' }, any ? 'Any' : it.name), !any && it.multipart ? h('span', { class: 'badge' }, 'multipart') : null, !any && it.further ? h('span', { class: 'badge' }, 'further') : null, !any && it.sub ? h('span', { class: 'sub' }, it.sub) : null);
     setKids(list, mk(null, true), ...items.map(it => mk(it, false)), items.length ? null : h('div', { class: 'pk-none' }, 'No match'));
   }
   const scrollSel = (id) => { const el = cols[id].list.querySelector('.pk-it.sel'); if (el) { const l = cols[id].list; l.scrollTop = Math.max(0, el.offsetTop - l.clientHeight / 2 + el.offsetHeight / 2); } };
@@ -90,10 +90,10 @@ export function openPicker({ title = 'Choose a question', current = null, confir
   }
 
   // ----- level filter (hidden by default, set to both) -----
-  const lvlSummary = h('summary', {}, 'Level: Core and Additional');
+  const lvlSummary = h('summary', {}, 'Level: all');
   const lvl = h('details', { class: 'pk-lvl' }, lvlSummary,
     h('div', { class: 'pk-lvl-in' }, LEVEL_MODES.map(([v, l]) => h('label', {}, h('input', { type: 'radio', name: 'pk-level', value: v, checked: v === 'both', onChange: () => {
-      st.level = v; lvlSummary.textContent = 'Level: ' + l;
+      st.level = v; lvlSummary.textContent = 'Level: ' + (v === 'both' ? 'all' : l);
       if (st.opt && !inLevel(byKey[st.opt])) st.opt = null;
       if (st.type && !lvAll().some(e => e.typeId === st.type)) st.type = null;
       if (st.topic && !lvAll().some(e => e.topic === st.topic)) st.topic = null;

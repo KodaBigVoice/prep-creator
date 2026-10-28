@@ -7,7 +7,7 @@ const lin = (a, c) => `${a === 1 ? '' : a}x ${c < 0 ? '-' : '+'} ${Math.abs(c)}`
 export default {
   id: 'factorise-ax2',
   topic: 'Factorising', type: 'Quadratics ax² + bx + c', code: 'FAC9',
-  levels: ['Additional'],
+  levels: ['Further'],
   search: 'factorise quadratic ax squared leading coefficient double brackets',
   verb: 'Factorise', marks: 3, lines: 4,
   variants: [

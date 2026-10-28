@@ -7,7 +7,7 @@ const ansOf = (roots) => (roots.length === 1 ? `x = ${roots[0]}` : roots.map(x =
 export default {
   id: 'equations-quadratic-factorise',
   topic: 'Equations', type: 'Quadratics by factorising', code: 'EQQ2',
-  levels: ['Additional'],
+  levels: ['Further'],
   search: 'solve quadratic equation by factorising roots x squared double brackets',
   verb: 'Solve', marks: 3, lines: 5,
   variants: [

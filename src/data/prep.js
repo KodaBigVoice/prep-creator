@@ -140,7 +140,8 @@ export function randomPrep(setId, name) {
   const set = setById[setId];
   const rng = makeRng(newSeed());
   const level = set.level;
-  const ok = (t) => (t.levels || []).includes(level);
+  const okV = (t, v) => (v.levels || t.levels || []).includes(level);
+  const ok = (t) => t.variants.some(v => okV(t, v));
   const calc = TYPES.filter(t => ok(t) && t.verb && t.topic !== 'Problem solving');
   const worded = TYPES.filter(t => ok(t) && !t.verb && t.topic !== 'Problem solving' && !t.multipart);
   const ps = TYPES.filter(t => ok(t) && t.topic === 'Problem solving');
@@ -148,7 +149,7 @@ export function randomPrep(setId, name) {
   const nCalc = Math.max(2, Math.round(nQ * 0.35)), nPS = ps.length ? (nQ >= 8 ? 2 : 1) : 0, nWord = nQ - nCalc - nPS;
   const used = new Set(); const questions = [];
   const pickType = (list) => { let c = list.filter(t => !used.has(t.topic)); if (!c.length) c = list; const t = rng.pick(c); used.add(t.topic); return t; };
-  const slotFor = (t, v) => makeSlot({ mode: 'fixed', pick: `${t.id}:${(v || rng.pick(t.variants)).id}` }, used, rng);
+  const slotFor = (t, v) => makeSlot({ mode: 'fixed', pick: `${t.id}:${(v || rng.pick(t.variants.filter(x => okV(t, x)))).id}` }, used, rng);
   for (let i = 0; i < nCalc; i++) {
     const first = pickType(calc);
     const slots = [slotFor(first)];
