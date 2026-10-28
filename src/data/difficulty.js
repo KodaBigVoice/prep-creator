@@ -26,7 +26,7 @@ export const VARIANT_D = {
   'equations-both-sides-negative:one': 4.7, 'equations-both-sides-negative:both': 5.3,
   'equations-brackets:one': 4.9, 'equations-brackets:neg': 5.3, 'equations-brackets:xside': 5.7, 'equations-brackets:both': 5.9, 'equations-brackets:sub': 6.2,
   'equations-fraction:split': 5.8, 'equations-fraction:top': 6.3, 'equations-fraction:eq': 6.8,
-  'equations-two-fractions:sum': 6.5, 'equations-two-fractions:cross': 7, 'equations-two-fractions:diff': 7.5,
+  'equations-two-fractions:sum': 6.5, 'equations-two-fractions:coef': 6.8, 'equations-two-fractions:cross': 7, 'equations-two-fractions:diff': 7.5,
   'expand-then-solve:std': 7.6,
   'equations-quadratic-simple:pure': 7.4, 'equations-quadratic-simple:coef': 7.8, 'equations-quadratic-simple:const': 8.2, 'equations-quadratic-simple:full': 8.6, 'equations-quadratic-simple:sub': 9,
   'equations-denominator:num': 8.4, 'equations-denominator:add': 8.8, 'equations-denominator:plus': 9.2,
@@ -55,7 +55,7 @@ export const VARIANT_D = {
   'units-metric:length': 2, 'units-metric:mass': 2, 'units-metric:capacity': 2.5, 'units-metric:three': 4,
 
   'standard-form:from': 2.5, 'standard-form:to': 3, 'standard-form:multiply': 5, 'standard-form:divide': 5.5,
-  'simultaneous:opp-y': 9.2, 'simultaneous:same-x': 9.4, 'simultaneous:multiply': 10,
+  'simultaneous:opp-y': 9.2, 'simultaneous:same-x': 9.4, 'simultaneous:multiply': 9.7, 'simultaneous:both': 10,
 
   'rounding:nearest': 1.5, 'rounding:dp': 2.5, 'rounding:sf': 4,
   'averages:three': 3, 'averages:mode': 3.5, 'mean-unknown:missing': 5, 'mean-unknown:new': 5.5,

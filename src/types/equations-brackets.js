@@ -1,6 +1,6 @@
 import { F, gcd } from '../core/frac.js';
 import { P } from '../core/poly.js';
-import { axb, bax, cx, fin, xAns, okSol } from './equations.js';
+import { axb, bax, cx, fin, xAns, okSol, sidesWork } from './equations.js';
 
 // expanded form with the x term first, e.g. "-3x + 12"
 const ex = (a, b) => P.v('x', 1, a).add(P.c(b)).tex();
@@ -13,11 +13,11 @@ export default {
   verb: 'Solve', marks: 2, lines: 4,
   integer: true,
   variants: [
-    { id: 'one', label: 'one bracket: a(bx + c) = d', params: { kind: 'one' } },
-    { id: 'neg', label: 'negative number outside: −a(x + b) = c', params: { kind: 'neg' } },
-    { id: 'xside', label: 'bracket one side, x term the other: a(x + b) = cx + d', params: { kind: 'xside' } },
-    { id: 'both', label: 'brackets on both sides: a(x + b) = c(x + d)', params: { kind: 'both' } },
-    { id: 'sub', label: 'subtracting a bracket: e − a(x + b) = f − gx', params: { kind: 'sub' } },
+    { id: 'one', label: 'one bracket: a(bx ± c) = d', params: { kind: 'one' } },
+    { id: 'neg', label: 'negative number outside: −a(x ± b) = c', params: { kind: 'neg' } },
+    { id: 'xside', label: 'bracket one side, x term the other: a(x ± b) = cx ± d', params: { kind: 'xside' } },
+    { id: 'both', label: 'brackets on both sides: a(x ± b) = c(x ± d)', params: { kind: 'both' } },
+    { id: 'sub', label: 'x terms on both sides: e ± a(x ± b) = f ± gx', params: { kind: 'sub' } },
   ],
   generate(r, v, fl) {
     const done = (eq, w, sol) => ({ parts: [{ body: `{{${eq}}}`, a: xAns(sol), w: `{{${w}}}`, chk: { k: 'solve', eq, v: 'x' } }] });
@@ -64,15 +64,14 @@ export default {
       const p = a - c;
       return done(eq, `${ex(a, a * b)} = ${ex(c, c * d)};\\ ${p > 0 ? fin(p, c * d - a * b) : `${a * b - c * d} = ${cx(-p)}x;\\ ${xAns(sol)}`}`, sol);
     }
-    // sub:  e - a(x + b) = f - gx
-    const [e, a, b, f, g, sol] = r.until(() => {
-      const e = r.int(2, 14), a = r.int(2, 6), b = r.int(1, 6) * r.sign(), f = r.int(0, 20), g = r.int(1, 8);
-      if (a === g || !f) return null;
-      const s = new F(f - e + a * b, g - a);     // e - ab - ax = f - gx  ->  (g - a)x = f - e + ab
-      return okSol(s, fl) ? [e, a, b, f, g, s] : null;
+    // sub:  e ± a(x ± b) = f ± gx   (the bracket is usually subtracted)
+    const [e, a, b, f, g, sb, tg, sol] = r.until(() => {
+      const e = r.int(2, 14), a = r.int(2, 6), b = r.int(1, 6) * r.sign(), f = r.int(0, 20), g = r.int(1, 8), sb = r.chance(0.7) ? -1 : 1, tg = r.chance(0.5) ? -1 : 1;
+      if (!f || sb * a === tg * g) return null;
+      const s = new F(f - e - sb * a * b, sb * a - tg * g);     // e + sb*a(x + b) = f + tg*g x
+      return okSol(s, fl) ? [e, a, b, f, g, sb, tg, s] : null;
     });
-    const eq = `${e} - ${a}(${axb(1, b)}) = ${bax(f, -g)}`;
-    const p = g - a, q = f - e + a * b;
-    return done(eq, `${bax(e - a * b, -a)} = ${bax(f, -g)};\\ ${p > 0 ? fin(p, q) : `${-q} = ${cx(-p)}x;\\ ${xAns(sol)}`}`, sol);
+    const eq = `${e} ${sb < 0 ? '-' : '+'} ${a}(${axb(1, b)}) = ${bax(f, tg * g)}`;
+    return done(eq, `${bax(e + sb * a * b, sb * a)} = ${bax(f, tg * g)};\\ ${sidesWork(sb * a, e + sb * a * b, tg * g, f)}`, sol);
   },
 };

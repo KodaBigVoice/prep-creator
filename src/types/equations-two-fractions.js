@@ -16,9 +16,10 @@ export default {
   verb: 'Solve', marks: 3, lines: 6,
   integer: true,
   variants: [
-    { id: 'sum', label: 'x/a + x/b = c', params: { kind: 'sum' } },
-    { id: 'cross', label: '(x + a)/b = (x + c)/d', params: { kind: 'cross' } },
-    { id: 'diff', label: '(x + a)/b ± (x + c)/d = e', params: { kind: 'diff' } },
+    { id: 'sum', label: 'x/a ± x/b = c', params: { kind: 'sum' } },
+    { id: 'coef', label: 'ax/b ± cx/d = e', params: { kind: 'coef' } },
+    { id: 'cross', label: '(x ± a)/b = (x ± c)/d', params: { kind: 'cross' } },
+    { id: 'diff', label: '(x ± a)/b ± (x ± c)/d = e', params: { kind: 'diff' } },
   ],
   generate(r, v, fl) {
     const done = (eq, w, sol) => ({ parts: [{ body: `{{${eq}}}`, a: xAns(sol), w: `{{${w}}}`, chk: { k: 'solve', eq, v: 'x' } }] });
@@ -41,6 +42,24 @@ export default {
       const L = lcm(a, b), eq = `${frac('x', a)} ${plus ? '+' : '-'} ${frac('x', b)} = ${c}`;
       const w = `${cx(L / a)}x ${plus ? '+' : '-'} ${cx(L / b)}x = ${c * L};\\ ${fin(plus ? L / a + L / b : L / a - L / b, c * L)}`;
       return done(eq, w, sol);
+    }
+    if (v.kind === 'coef') {
+      const [a, b, c, d, plus, e, sol] = r.until(() => {
+        const [b, d] = r.pick(PAIRS), a = r.int(1, 5), c = r.int(1, 5), plus = r.chance(0.55);
+        if (b === d || gcd(a, b) > 1 || gcd(c, d) > 1 || (a === 1 && c === 1)) return null;
+        const L = lcm(b, d), X = (L / b) * a + (plus ? 1 : -1) * (L / d) * c;
+        if (X <= 0) return null;
+        let e;
+        if (fl.integer) {
+          const x0 = r.int(-6, 12); if (!x0) return null;
+          const ef = new F(X * x0, L); if (!ef.isInt || ef.isZero) return null; e = ef.n;
+        } else e = r.int(2, 30);
+        const s = new F(e * L, X);
+        return okSol(s, fl, 40) ? [a, b, c, d, plus, e, s] : null;
+      }, 30000);
+      const L = lcm(b, d), X = (L / b) * a + (plus ? 1 : -1) * (L / d) * c;
+      const eq = `${frac(`${cx(a)}x`, b)} ${plus ? '+' : '-'} ${frac(`${cx(c)}x`, d)} = ${e}`;
+      return done(eq, `${cx((L / b) * a)}x ${plus ? '+' : '-'} ${cx((L / d) * c)}x = ${e * L};\\ ${fin(X, e * L)}`, sol);
     }
     if (v.kind === 'cross') {
       const [a, m, p, b, n, q, sol] = r.until(() => {

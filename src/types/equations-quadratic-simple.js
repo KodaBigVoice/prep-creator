@@ -16,8 +16,8 @@ export default {
   variants: [
     { id: 'pure', label: 'x² = a', params: { kind: 'pure' } },
     { id: 'coef', label: 'ax² = b', params: { kind: 'coef' } },
-    { id: 'const', label: 'x² + a = b', params: { kind: 'const' } },
-    { id: 'full', label: 'ax² + b = c', params: { kind: 'full' } },
+    { id: 'const', label: 'x² ± a = b', params: { kind: 'const' } },
+    { id: 'full', label: 'ax² ± b = c', params: { kind: 'full' } },
     { id: 'sub', label: 'a − bx² = c', params: { kind: 'sub' } },
   ],
   generate(r, v, fl) {

@@ -12,8 +12,8 @@ export default {
   integer: true,
   variants: [
     { id: 'num', label: 'a/x = b', params: { kind: 'num' } },
-    { id: 'add', label: 'a/x + b = c', params: { kind: 'add' } },
-    { id: 'plus', label: 'a/(x + b) = c', params: { kind: 'plus' } },
+    { id: 'add', label: 'a/x ± b = c', params: { kind: 'add' } },
+    { id: 'plus', label: 'a/(x ± b) = c', params: { kind: 'plus' } },
   ],
   generate(r, v, fl) {
     const done = (eq, w, sol) => ({ parts: [{ body: `{{${eq}}}`, a: xAns(sol), w: `{{${w}}}`, chk: { k: 'solve', eq, v: 'x' } }] });

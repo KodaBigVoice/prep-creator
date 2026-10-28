@@ -9,8 +9,8 @@ export default {
   verb: 'Solve', marks: 2, lines: 3,
   integer: true,
   variants: [
-    { id: 'std', label: 'ax + b = c', params: { kind: 'std' } },
-    { id: 'frac', label: 'x over a, plus b = c', params: { kind: 'frac' } },
+    { id: 'std', label: 'ax ± b = c', params: { kind: 'std' } },
+    { id: 'frac', label: 'x over a ± b = c', params: { kind: 'frac' } },
     { id: 'neg', label: 'b − ax = c  (negative x term)', params: { kind: 'neg' } },
   ],
   generate(r, v, fl) {
