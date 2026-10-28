@@ -19,7 +19,7 @@ const dumpFile = dumpIdx >= 0 ? args[dumpIdx + 1] : null;
 const registered = new Set(TYPES.map(t => t.id));
 const files = fs.readdirSync(path.join(here, '../src/types')).filter(f => f.endsWith('.js') && f !== 'index.js');
 const idx = fs.readFileSync(path.join(here, '../src/types/index.js'), 'utf8');
-const NONTYPE = new Set(['fractions.js', 'equations.js', 'factorising.js', 'expanding.js']);          // shared helper files
+const NONTYPE = new Set(['fractions.js', 'equations.js', 'factorising.js', 'expanding.js', 'fracprob.js']);          // shared helper files
 const unregistered = files.filter(f => !NONTYPE.has(f) && !idx.includes(`./${f}`));
 
 const FORBIDDEN = [/leave your answer/i, /simplest form/i, /leave .{0,30}as a mixed number/i, /undefined/, /NaN/, /\bwork out the value of\b.*\bwork out\b/i, /  +/];

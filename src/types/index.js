@@ -14,6 +14,16 @@ import fractionsMultiply from './fractions-multiply.js';
 import fractionsDivide from './fractions-divide.js';
 import fractionsMixedOps from './fractions-mixed-operations.js';
 import fractionsNegative from './fractions-negative.js';
+import fracprobAmount from './fracprob-amount.js';
+import fracprobLeft from './fracprob-left.js';
+import fracprobFractionOf from './fracprob-fraction-of.js';
+import fracprobAdd from './fracprob-add.js';
+import fracprobDivide from './fracprob-divide.js';
+import fracprobStages from './fracprob-stages.js';
+import fracprobBackwards from './fracprob-backwards.js';
+import fracprobChange from './fracprob-change.js';
+import fracprobGroup from './fracprob-group.js';
+import fracprobMulti from './fracprob-multi.js';
 import indicesMultiply from './indices-multiply.js';
 import indicesDivide from './indices-divide.js';
 import expandNumber from './expand-number.js';
@@ -80,6 +90,7 @@ import problemSolving from './problem-solving.js';
 export default [
   bidmasStandard, bidmasNegatives,
   fractionsEquivalent, fractionsSimplify, fractionsImproper, fractionsCompare, fractionsOfAmount, fractionsSameDenominator, fractionsRelated, fractionsUnrelated, fractionsMixed, fractionsMultiply, fractionsDivide, fractionsMixedOps, fractionsNegative,
+  fracprobAmount, fracprobLeft, fracprobFractionOf, fracprobAdd, fracprobDivide, fracprobStages, fracprobBackwards, fracprobChange, fracprobGroup, fracprobMulti,
   indicesMultiply, indicesDivide, expandNumber, expandLetter, expandSimplifyAdd, expandSimplifySubtract, expandPowers, expandPowersHigh, expandDouble, expandDoubleCoef, expandSquare, expandDots, expandSimplifyDouble, expandTriple, factoriseNumber, factoriseLetter, factoriseNumberLetter, factoriseTwoLetters, factorisePowers, factorisePowersHigh, factoriseQuadratic, factoriseSquares, factoriseAx2, factoriseFull,
   equationsOneStep, equationsTwoStep, equationsBothSides, equationsBothSidesRight, equationsBothSidesNegative, equationsBrackets, equationsFraction, equationsTwoFractions, expandThenSolve, equationsQuadraticSimple, equationsQuadraticFactorise, equationsDenominator,
   substitution, pythagoras, hcfLcm, primeFactors, percentageOfAmount, percentageChange, percentageChangeFind, reversePercentages, compoundInterest, ratioShare, ratioDifference, proportionDirect, proportionInverse, speedDistanceTime, circles, areaShapes, volumePrisms, unitsMetric, standardForm, simultaneous, rounding, averages, meanUnknown, probability, problemSolving,

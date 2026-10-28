@@ -21,6 +21,18 @@ export const VARIANT_D = {
   'fractions-mixed-operations:bracket': 7.8, 'fractions-mixed-operations:order': 8.2, 'fractions-mixed-operations:bracketdiv': 8.6,
   'fractions-negative:addsub': 8.6, 'fractions-negative:mul': 9, 'fractions-negative:div': 9.4,
 
+  // Fractions: problem solving, in ladder order
+  'fracprob-amount:count': 4.2, 'fracprob-amount:money': 4.4, 'fracprob-amount:measure': 4.6,
+  'fracprob-left:left': 4.8, 'fracprob-left:parts': 5, 'fracprob-left:frac': 5.3,
+  'fracprob-fraction-of:same': 5.2, 'fracprob-fraction-of:units': 5.9,
+  'fracprob-add:left': 5.6, 'fracprob-add:total': 5.8, 'fracprob-add:sub': 6, 'fracprob-add:mixed': 6.8, 'fracprob-add:mixedsub': 7.2,
+  'fracprob-divide:whole': 6.5, 'fracprob-divide:frac': 6.9, 'fracprob-divide:mixed': 7.5,
+  'fracprob-stages:orig': 7, 'fracprob-stages:rest': 7.6,
+  'fracprob-backwards:part': 7.6, 'fracprob-backwards:left': 8,
+  'fracprob-change:inc': 7.7, 'fracprob-change:dec': 7.9, 'fracprob-change:rev': 8.4,
+  'fracprob-group:rest': 8, 'fracprob-group:of': 8.5,
+  'fracprob-multi:share': 8.6, 'fracprob-multi:stages': 8.9, 'fracprob-multi:three': 9.4,
+
   'indices-multiply:one': 3, 'indices-multiply:two': 4, 'indices-multiply:neg': 5,
   'indices-divide:div': 4, 'indices-divide:frac': 5,
 
