@@ -16,7 +16,6 @@ const ICON_SWAP = SV('<path d="M2.5 5.5h10M9.8 2.8l2.7 2.7-2.7 2.7M13.5 10.5h-10
 const ICON_EDIT = SV('<path d="M2.8 13.2l.6-2.9 7.2-7.2a1.4 1.4 0 0 1 2 0l.3.3a1.4 1.4 0 0 1 0 2l-7.2 7.2-2.9.6zM9.6 4.1l2.3 2.3"/>');
 const ICON_MORE = '<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><circle cx="3.5" cy="8" r="1.3"/><circle cx="8" cy="8" r="1.3"/><circle cx="12.5" cy="8" r="1.3"/></svg>';
 const ICON_SHUFFLE = SV('<path d="M2 4.5h2.2c3.2 0 3.6 7 6.8 7H14M2 11.5h2.2c1 0 1.7-.7 2.3-1.6M14 4.5h-3c-1 0-1.7.7-2.3 1.6M12 2.5l2 2-2 2M12 9.5l2 2-2 2"/>');
-const ICON_SHUFFLE_S = ICON_SHUFFLE.replace('width="16" height="16"', 'width="12" height="12"');
 const poolInfo = (slot) => { const d = slot.def; if (d.mode !== 'pool') return null; const n = (d.candidates || []).filter(c => c.on !== false).length; return { label: d.label || 'Pool', n, text: `${d.label || 'Pool'} · ${n} choice${n === 1 ? '' : 's'}` }; };
 const fmt = (n) => (Math.round(n * 100) / 100).toString();
 
@@ -40,7 +39,7 @@ export function renderBuilder(root) {
     h('span', { style: { flex: 1 } }),
     h('button', { class: 'btn small', onClick: rerollAll, title: 'New numbers for every question that is not locked' }, '↻ Re-roll all')));
   if (!prep.questions.length) root.append(h('div', { class: 'empty' }, 'No questions yet. Choose a preset in the sidebar, or add a question.'));
-  else root.append(h('div', { class: 'colhead' + (aos ? ' aos' : '') }, h('span'), h('span', {}, 'Question'), h('span', { class: 'c' }, 'Marks'), aos ? h('span', { class: 'c' }, 'Lines') : null, h('span')));
+  else root.append(h('div', { class: 'colhead' + (aos ? ' aos' : '') }, h('span'), h('span', { class: 'qh' }, 'Question'), h('span', { class: 'c' }, 'Marks'), aos ? h('span', { class: 'c' }, 'Lines') : null, h('span')));
 
   prep.questions.forEach((q, qi) => {
     const cq = qs[qi];
@@ -62,10 +61,13 @@ export function renderBuilder(root) {
       const firstOfSlot = cq.parts.findIndex(x => x.si === p.si) === k;
       const isRowSel = isSel && sel.k === k;
       const manualM = slot.marksManual[p.pi], manualL = slot.linesManual[p.pi];
-      const row = h('div', { class: 'prow' + (aos ? ' aos' : '') + (isRowSel ? ' sel' : '') },
+      const pinfo = poolInfo(slot);
+      const toggleSel = () => { ctx.ui.sel = isRowSel ? null : { q: qi, k }; ctx.hooks.builder(); };
+      const row = h('div', { class: 'prow' + (aos ? ' aos' : '') + (isRowSel ? ' sel' : '') + (p.l ? '' : ' nolab') },
+        h('div', { class: 'gut' }, pinfo && firstOfSlot ? h('button', { class: 'poolico', title: `Pool: ${pinfo.text}`, 'aria-label': 'Pool question', html: ICON_SHUFFLE, onClick: toggleSel }) : null),
         h('div', { class: 'lab' }, p.l ? `(${p.l})` : ''),
-        h('div', { class: 'txt', title: 'Click for details and options', onClick: () => { ctx.ui.sel = isRowSel ? null : { q: qi, k }; ctx.hooks.builder(); },
-          html: T(p.text) + (p.calc ? ' <span class="badge">calculator</span>' : '') + (p.edited ? ' <span class="badge ed">edited</span>' : '') + (poolInfo(slot) && firstOfSlot ? ` <span class="poolmark" title="Pool: ${poolInfo(slot).text.replace(/"/g, '')}">${ICON_SHUFFLE_S}</span>` : '') }),
+        h('div', { class: 'txt', title: 'Click for details and options', onClick: toggleSel,
+          html: T(p.text) + (p.calc ? ' <span class="badge">calculator</span>' : '') + (p.edited ? ' <span class="badge ed">edited</span>' : '') }),
         h('div', { class: 'c' }, stepper({ value: p.marks, step: 1, min: 1, manual: manualM, title: 'Marks for this part', onChange: (v) => { P.setMarks(slot, p.pi, v); ctx.commit(); } })),
         aos ? h('div', { class: 'c' }, stepper({ value: p.lines, step: 0.5, min: 0.5, manual: manualL, title: 'Working space in ruled lines (decimals allowed)', onChange: (v) => { P.setLines(slot, p.pi, v); ctx.commit({ builder: true }); } })) : null,
         h('div', { class: 'c' }, firstOfSlot ? h('button', { class: 'iconbtn', title: slot.locked ? 'Locked' : (poolInfo(slot) ? `New question from pool: ${poolInfo(slot).text}` : 'New numbers (same kind of question)'), disabled: slot.locked, onClick: () => { P.rerollSlot(prep, slot); ctx.commit(); }, ...(poolInfo(slot) ? { html: ICON_SHUFFLE } : {}) }, poolInfo(slot) ? null : '↻') : null));
