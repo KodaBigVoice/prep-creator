@@ -10,6 +10,7 @@ export const LEVELS = ['Foundation', 'Core', 'Additional'];
 // Types that were split or renamed keep working: older saved preps and presets still point at the old names.
 const ALIAS = {
   'equations-simple': 'equations-one-step',
+  'factorise-common': 'factorise-number', 'factorise-common:num': 'factorise-number:two', 'factorise-common:one': 'factorise-number-letter:std', 'factorise-common:two': 'factorise-two-letters:xy',
   'equations-simple:one': 'equations-one-step:add', 'equations-simple:two': 'equations-two-step:std', 'equations-simple:frac': 'equations-two-step:frac',
 };
 export const canon = (p) => ALIAS[p] ?? p;

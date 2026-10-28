@@ -9,7 +9,17 @@ import indicesMultiply from './indices-multiply.js';
 import indicesDivide from './indices-divide.js';
 import expandSingle from './expand-single.js';
 import expandTwoSubtract from './expand-double-subtract.js';
-import factoriseCommon from './factorise-common.js';
+import factoriseNumber from './factorise-number.js';
+import factoriseLetter from './factorise-letter.js';
+import factoriseNumberLetter from './factorise-number-letter.js';
+import factoriseTwoLetters from './factorise-two-letters.js';
+import factorisePowers from './factorise-powers.js';
+import factorisePowersHigh from './factorise-powers-high.js';
+import factoriseQuadratic from './factorise-quadratic.js';
+import factoriseSquares from './factorise-squares.js';
+import factoriseAx2 from './factorise-ax2.js';
+import factoriseFull from './factorise-full.js';
+import equationsQuadraticFactorise from './equations-quadratic-factorise.js';
 import equationsOneStep from './equations-one-step.js';
 import equationsTwoStep from './equations-two-step.js';
 import equationsBothSides from './equations-both-sides.js';
@@ -51,7 +61,7 @@ import problemSolving from './problem-solving.js';
 export default [
   bidmasStandard, bidmasNegatives,
   fractionsAdd, fractionsSubtract, fractionsMultiply, fractionsDivide,
-  indicesMultiply, indicesDivide, expandSingle, expandTwoSubtract, factoriseCommon,
-  equationsOneStep, equationsTwoStep, equationsBothSides, equationsBothSidesRight, equationsBothSidesNegative, equationsBrackets, equationsFraction, equationsTwoFractions, expandThenSolve, equationsQuadraticSimple, equationsDenominator,
+  indicesMultiply, indicesDivide, expandSingle, expandTwoSubtract, factoriseNumber, factoriseLetter, factoriseNumberLetter, factoriseTwoLetters, factorisePowers, factorisePowersHigh, factoriseQuadratic, factoriseSquares, factoriseAx2, factoriseFull,
+  equationsOneStep, equationsTwoStep, equationsBothSides, equationsBothSidesRight, equationsBothSidesNegative, equationsBrackets, equationsFraction, equationsTwoFractions, expandThenSolve, equationsQuadraticSimple, equationsQuadraticFactorise, equationsDenominator,
   substitution, pythagoras, hcfLcm, primeFactors, percentageOfAmount, percentageChange, percentageChangeFind, reversePercentages, compoundInterest, ratioShare, ratioDifference, proportionDirect, proportionInverse, speedDistanceTime, circles, areaShapes, volumePrisms, unitsMetric, standardForm, simultaneous, rounding, averages, meanUnknown, probability, problemSolving,
 ];

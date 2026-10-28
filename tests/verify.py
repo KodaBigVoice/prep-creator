@@ -105,6 +105,33 @@ for rec in recs:
             if not shown.startswith('\\pm'): fail(rec, 'answer should start with \\pm')
             elif sol != {rr, -rr} or sp.simplify(S(shown[len('\\pm'):]) - rr) != 0: fail(rec, f'solveall gives {sol}, answer {shown}')
             else: ok += 1
+        elif k == 'solveset':
+            # equations with several answers (x = a or x = b): the real solutions must be exactly the listed ones, and the displayed answer must say so
+            x = sp.Symbol(c['v'])
+            lhs, rhs = c['eq'].split('=')
+            sol = set(sp.solve(sp.Eq(S(lhs, **{c['v']: x}), S(rhs, **{c['v']: x})), x))
+            want = {sp.Integer(v) for v in c['vals']}
+            shown = {sp.Integer(int(m)) for m in re.findall(r'x = (-?\d+)', rec['a'])}
+            if sol != want or shown != want: fail(rec, f'solveset gives {sol}, listed {want}, shown {shown}')
+            else: ok += 1
+        elif k == 'factor':
+            # out(in): expands to the question, and nothing is left to take out of the bracket
+            q = S(c['q']); out = S(c['out']); ins = S(c['in'])
+            if sp.expand(out * ins - q) != 0: fail(rec, 'factor: does not expand to the question')
+            else:
+                g = sp.gcd_list(sp.Add.make_args(sp.expand(ins)))
+                if abs(g) != 1: fail(rec, f'not fully factorised: {g} still common in the bracket')
+                else: ok += 1
+        elif k == 'factorfull':
+            # content x product of irreducible brackets: expands to the question, and there are no further factors
+            q = S(c['q']); prod = sp.Integer(c['content'])
+            for f in c['factors']: prod = prod * S(f)
+            fl = sp.factor_list(sp.expand(q))
+            irreducible = all(len(sp.factor_list(S(f))[1]) == 1 and sp.factor_list(S(f))[1][0][1] == 1 and abs(sp.factor_list(S(f))[0]) == 1 for f in c['factors'])
+            if sp.expand(prod - q) != 0: fail(rec, 'factorfull: does not expand to the question')
+            elif not irreducible: fail(rec, 'factorfull: a bracket can be factorised further')
+            elif abs(fl[0]) != c['content'] or sum(e for _, e in fl[1]) != len(c['factors']): fail(rec, f'factorfull: not fully factorised: {fl}')
+            else: ok += 1
         elif k == 'equiv':
             x, y = sp.symbols('x y')
             if sp.simplify(sp.expand(S(c['q']) - S(c['a']))) != 0: fail(rec, 'equiv: not equal')

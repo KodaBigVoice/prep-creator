@@ -15,7 +15,7 @@ export const STARTER_PRESETS = [
     questions: [
       [F('bidmas-standard:bp'), F('bidmas-negatives:std')],
       [F('fractions-subtract:overlap'), F('fractions-divide:cancel')],
-      [F('indices-multiply:two'), F('indices-divide:frac'), pool('Expand or factorise', ['expand-two-subtract:lin', 'factorise-common:one', 'factorise-common:num'])],
+      [F('indices-multiply:two'), F('indices-divide:frac'), pool('Expand or factorise', ['expand-two-subtract:lin', 'factorise-number-letter:std', 'factorise-number:two'])],
       [F('equations-both-sides:pos'), F('equations-brackets:both'), F('equations-fraction:top')],
       [pool('Question 5 pool', POOL_A)],
       [pool('Question 6 pool', POOL_A)],

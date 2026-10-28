@@ -16,7 +16,17 @@ export const VARIANT_D = {
 
   'expand-single:pos': 2, 'expand-single:neg': 3, 'expand-single:two': 4,
   'expand-two-subtract:lin': 6, 'expand-two-subtract:two': 8,
-  'factorise-common:num': 2, 'factorise-common:one': 4, 'factorise-common:two': 6,
+  // Factorising, in ladder order
+  'factorise-number:two': 2, 'factorise-number:xy': 2.5, 'factorise-number:three': 3.2,
+  'factorise-letter:sq': 3.4, 'factorise-letter:mix': 3.9,
+  'factorise-number-letter:std': 4.2, 'factorise-number-letter:three': 5,
+  'factorise-two-letters:shared': 5, 'factorise-two-letters:xy': 5.5, 'factorise-two-letters:three': 6,
+  'factorise-powers:pure': 5.8, 'factorise-powers:num': 6.2, 'factorise-powers:two': 6.6,
+  'factorise-powers-high:pure': 6.8, 'factorise-powers-high:num': 7.2, 'factorise-powers-high:two': 7.6,
+  'factorise-quadratic:pos': 8, 'factorise-quadratic:neg': 8.3, 'factorise-quadratic:mixed': 8.7,
+  'factorise-squares:x2': 8.4, 'factorise-squares:ax2': 8.8, 'factorise-squares:two': 9.2,
+  'factorise-ax2:pos': 9.2, 'factorise-ax2:mixed': 9.6,
+  'factorise-full:dots': 9.4, 'factorise-full:quad': 9.6, 'factorise-full:cubic': 9.9,
 
   // Equations, in ladder order (a type's position is the average of its options)
   'equations-one-step:add': 1, 'equations-one-step:times': 1.3, 'equations-one-step:div': 1.6, 'equations-one-step:neg': 2,
@@ -29,6 +39,7 @@ export const VARIANT_D = {
   'equations-two-fractions:sum': 6.5, 'equations-two-fractions:coef': 6.8, 'equations-two-fractions:cross': 7, 'equations-two-fractions:diff': 7.5,
   'expand-then-solve:single': 7.2, 'expand-then-solve:std': 7.6,
   'equations-quadratic-simple:pure': 7.4, 'equations-quadratic-simple:coef': 7.8, 'equations-quadratic-simple:const': 8.2, 'equations-quadratic-simple:full': 8.6, 'equations-quadratic-simple:sub': 9,
+  'equations-quadratic-factorise:common': 8, 'equations-quadratic-factorise:trinomial': 8.5, 'equations-quadratic-factorise:rearrange': 9,
   'equations-denominator:num': 8.4, 'equations-denominator:add': 8.8, 'equations-denominator:plus': 9.2,
 
   'substitution:one': 2, 'substitution:three': 4, 'substitution:three-hard': 6,
