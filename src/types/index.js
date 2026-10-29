@@ -97,10 +97,6 @@ import pctprobSaleVat from './pctprob-sale-vat.js';
 import pctprobProfit from './pctprob-profit.js';
 import pctprobFractionRatio from './pctprob-fraction-ratio.js';
 import pctprobGrowth from './pctprob-growth.js';
-import ratioShare from './ratio-share.js';
-import ratioDifference from './ratio-difference.js';
-import proportionDirect from './proportion-direct.js';
-import proportionInverse from './proportion-inverse.js';
 import speedDistanceTime from './speed-distance-time.js';
 import circles from './circles.js';
 import areaShapes from './area-shapes.js';
@@ -113,6 +109,30 @@ import averages from './averages.js';
 import meanUnknown from './mean-unknown.js';
 import probability from './probability.js';
 import problemSolving from './problem-solving.js';
+import rpWrite from './rp-write.js';
+import rpSimplify from './rp-simplify.js';
+import rpEquivalent from './rp-equivalent.js';
+import rpSimplifyUnits from './rp-simplify-units.js';
+import rpSimplifyDec from './rp-simplify-dec.js';
+import rpOneN from './rp-one-n.js';
+import rpShare2 from './rp-share2.js';
+import rpShare3 from './rp-share3.js';
+import rpOneShare from './rp-one-share.js';
+import rpDifference from './rp-difference.js';
+import rpFraction from './rp-fraction.js';
+import rpDirect from './rp-direct.js';
+import rpRecipe from './rp-recipe.js';
+import rpScale from './rp-scale.js';
+import rpInverse from './rp-inverse.js';
+import rpChange from './rp-change.js';
+import rpCombine from './rp-combine.js';
+import rpprobShareSpend from './rpprob-share-spend.js';
+import rpprobMix from './rpprob-mix.js';
+import rpprobDecimal from './rpprob-decimal.js';
+import rpprobAges from './rpprob-ages.js';
+import rpprobAfter from './rpprob-after.js';
+import rpprobHours from './rpprob-hours.js';
+import rpprobAlgebra from './rpprob-algebra.js';
 import decOrder from './dec-order.js';
 import decAddSame from './dec-add-same.js';
 import decPow10 from './dec-pow10.js';
@@ -147,5 +167,5 @@ export default [
   fdpDecToFrac, fdpFracToDec, fdpPercToFd, fdpToPerc, fdpTable, fdpOrder, fdpBeyond, fdpMixedCalc, fdpRecurringId, fdpRecurringFrac,
   indicesMultiply, indicesDivide, expandNumber, expandLetter, expandSimplifyAdd, expandSimplifySubtract, expandPowers, expandPowersHigh, expandDouble, expandDoubleCoef, expandSquare, expandDots, expandSimplifyDouble, expandTriple, factoriseNumber, factoriseLetter, factoriseNumberLetter, factoriseTwoLetters, factorisePowers, factorisePowersHigh, factoriseQuadratic, factoriseSquares, factoriseAx2, factoriseFull,
   equationsOneStep, equationsTwoStep, equationsBothSides, equationsBothSidesRight, equationsBothSidesNegative, equationsBrackets, equationsFraction, equationsTwoFractions, expandThenSolve, equationsQuadraticSimple, equationsQuadraticFactorise, equationsDenominator,
-  substitution, pythagoras, hcfLcm, primeFactors, pctBenchmark, pctBuildup, pctHarder, pctCalc, pctOfAnother, pctChangeBy, pctMultiplier, pctFindChange, pctReverse, pctCompound, pctRepeat, pctCompoundFind, pctprobRest, pctprobWhole, pctprobGroup, pctprobSurvey, pctprobBestBuy, pctprobPay, pctprobSaleVat, pctprobProfit, pctprobFractionRatio, pctprobGrowth, ratioShare, ratioDifference, proportionDirect, proportionInverse, speedDistanceTime, circles, areaShapes, volumePrisms, unitsMetric, standardForm, simultaneous, rounding, averages, meanUnknown, probability, problemSolving,
+  substitution, pythagoras, hcfLcm, primeFactors, pctBenchmark, pctBuildup, pctHarder, pctCalc, pctOfAnother, pctChangeBy, pctMultiplier, pctFindChange, pctReverse, pctCompound, pctRepeat, pctCompoundFind, pctprobRest, pctprobWhole, pctprobGroup, pctprobSurvey, pctprobBestBuy, pctprobPay, pctprobSaleVat, pctprobProfit, pctprobFractionRatio, pctprobGrowth, rpWrite, rpSimplify, rpEquivalent, rpSimplifyUnits, rpSimplifyDec, rpOneN, rpShare2, rpShare3, rpOneShare, rpDifference, rpFraction, rpDirect, rpRecipe, rpScale, rpInverse, rpChange, rpCombine, rpprobShareSpend, rpprobMix, rpprobDecimal, rpprobAges, rpprobAfter, rpprobHours, rpprobAlgebra, speedDistanceTime, circles, areaShapes, volumePrisms, unitsMetric, standardForm, simultaneous, rounding, averages, meanUnknown, probability, problemSolving,
 ];

@@ -23,6 +23,10 @@ const ALIAS = {
   'percentage-change-find': 'pct-find-change:inc', 'percentage-change-find:profit': 'pct-find-change:profit', 'percentage-change-find:increase': 'pct-find-change:inc', 'percentage-change-find:decrease': 'pct-find-change:dec',
   'reverse-percentages': 'pct-reverse:sale', 'reverse-percentages:sale': 'pct-reverse:sale', 'reverse-percentages:increase': 'pct-reverse:increase', 'reverse-percentages:sale-calc': 'pct-reverse:sale-calc',
   'compound-interest': 'pct-compound:interest', 'compound-interest:interest': 'pct-compound:interest', 'compound-interest:depreciation': 'pct-compound:depreciation',
+  'ratio-share': 'rp-share2:money', 'ratio-share:two': 'rp-share2:money', 'ratio-share:three': 'rp-share3:money', 'ratio-share:one': 'rp-share2:one',
+  'ratio-difference': 'rp-difference:total', 'ratio-difference:total': 'rp-difference:total', 'ratio-difference:other': 'rp-one-share:other',
+  'proportion-direct': 'rp-direct:cost', 'proportion-direct:cost': 'rp-direct:cost', 'proportion-direct:recipe': 'rp-recipe:plain',
+  'proportion-inverse': 'rp-inverse:workers', 'proportion-inverse:workers': 'rp-inverse:workers',
 };
 // 'oldType:*' (any option) follows the old type to its new one
 export const canon = (p) => { if (ALIAS[p]) return ALIAS[p]; const m = /^(.+):\*$/.exec(p); return m && ALIAS[m[1]] ? ALIAS[m[1]].split(':')[0] + ':*' : p; };
