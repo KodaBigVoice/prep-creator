@@ -113,11 +113,37 @@ import averages from './averages.js';
 import meanUnknown from './mean-unknown.js';
 import probability from './probability.js';
 import problemSolving from './problem-solving.js';
+import decOrder from './dec-order.js';
+import decAddSame from './dec-add-same.js';
+import decPow10 from './dec-pow10.js';
+import decAddDiff from './dec-add-diff.js';
+import decPow01 from './dec-pow01.js';
+import decMultWhole from './dec-mult-whole.js';
+import decDivWhole from './dec-div-whole.js';
+import decMultEasy from './dec-mult-easy.js';
+import decMultHard from './dec-mult-hard.js';
+import decDivSame from './dec-div-same.js';
+import decDivDiff from './dec-div-diff.js';
+import decDivTwo from './dec-div-two.js';
+import decDivCtx from './dec-div-ctx.js';
+import decMissing from './dec-missing.js';
+import decGiven from './dec-given.js';
+import decPower from './dec-power.js';
+import decBidmas from './dec-bidmas.js';
+import decCalc from './dec-calc.js';
+import decprobShopping from './decprob-shopping.js';
+import decprobShare from './decprob-share.js';
+import decprobLeft from './decprob-left.js';
+import decprobBestBuy from './decprob-best-buy.js';
+import decprobExchange from './decprob-exchange.js';
+import decprobFee from './decprob-fee.js';
+import decprobRect from './decprob-rect.js';
 
 export default [
   bidmasStandard, bidmasNegatives,
   fractionsEquivalent, fractionsSimplify, fractionsImproper, fractionsCompare, fractionsOfAmount, fractionsSameDenominator, fractionsRelated, fractionsUnrelated, fractionsMixed, fractionsMultiply, fractionsDivide, fractionsMixedOps, fractionsNegative,
   fracprobAmount, fracprobLeft, fracprobFractionOf, fracprobAdd, fracprobDivide, fracprobStages, fracprobBackwards, fracprobChange, fracprobGroup, fracprobMulti,
+  decOrder, decAddSame, decPow10, decAddDiff, decPow01, decMultWhole, decDivWhole, decMultEasy, decMultHard, decDivSame, decDivDiff, decDivTwo, decDivCtx, decMissing, decGiven, decPower, decBidmas, decCalc, decprobShopping, decprobShare, decprobLeft, decprobBestBuy, decprobExchange, decprobFee, decprobRect,
   fdpDecToFrac, fdpFracToDec, fdpPercToFd, fdpToPerc, fdpTable, fdpOrder, fdpBeyond, fdpMixedCalc, fdpRecurringId, fdpRecurringFrac,
   indicesMultiply, indicesDivide, expandNumber, expandLetter, expandSimplifyAdd, expandSimplifySubtract, expandPowers, expandPowersHigh, expandDouble, expandDoubleCoef, expandSquare, expandDots, expandSimplifyDouble, expandTriple, factoriseNumber, factoriseLetter, factoriseNumberLetter, factoriseTwoLetters, factorisePowers, factorisePowersHigh, factoriseQuadratic, factoriseSquares, factoriseAx2, factoriseFull,
   equationsOneStep, equationsTwoStep, equationsBothSides, equationsBothSidesRight, equationsBothSidesNegative, equationsBrackets, equationsFraction, equationsTwoFractions, expandThenSolve, equationsQuadraticSimple, equationsQuadraticFactorise, equationsDenominator,
