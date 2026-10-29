@@ -27,6 +27,7 @@ const ALIAS = {
   'ratio-difference': 'rp-difference:total', 'ratio-difference:total': 'rp-difference:total', 'ratio-difference:other': 'rp-one-share:other',
   'proportion-direct': 'rp-direct:cost', 'proportion-direct:cost': 'rp-direct:cost', 'proportion-direct:recipe': 'rp-recipe:plain',
   'proportion-inverse': 'rp-inverse:workers', 'proportion-inverse:workers': 'rp-inverse:workers',
+  'substitution': 'sub-neg-add:one-negative', 'substitution:three': 'sub-neg-mult:with-add', 'substitution:three-hard': 'sub-mixed:longer', 'substitution:one': 'sub-mixed:single',
 };
 // 'oldType:*' (any option) follows the old type to its new one
 export const canon = (p) => { if (ALIAS[p]) return ALIAS[p]; const m = /^(.+):\*$/.exec(p); return m && ALIAS[m[1]] ? ALIAS[m[1]].split(':')[0] + ':*' : p; };

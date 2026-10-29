@@ -11,12 +11,17 @@ export const sub = (l, r) => bin('-', l, r);
 export const mul = (l, r) => bin('*', l, r);
 export const div = (l, r) => bin('/', l, r);
 export const pow = (l, r) => bin('^', l, r);
+export const sqrt = (x) => ({ t: 'sqrt', x });                // square root of a whole expression
+// show non-integers as decimals (0.25) instead of fractions, while a decimal question is being worked
+let DEC = false;
+export const setDec = (mode) => { DEC = mode === true ? 'dec' : mode || false; };       // 'dec': 0.25 ... 'frac': always an improper fraction, never a mixed number
 
 export function value(x) {
   switch (x.t) {
     case 'n': return x.v;
     case 'neg': return value(x.x).neg();
     case 'b': return value(x.x);
+    case 'sqrt': { const v = value(x.x), s = v.isInt && v.n >= 0 ? Math.round(Math.sqrt(v.n)) : NaN; if (s * s !== v.n) throw new Error('not a perfect square'); return F.of(s); }
     case 'bin': {
       const a = value(x.l), b = value(x.r);
       if (x.op === '+') return a.add(b);
@@ -30,7 +35,8 @@ export function value(x) {
 }
 
 export const texTop = (x) => tex(x, { first: true });
-const numTex = (v) => (v.isInt ? String(v.n) : v.mixedTex());
+const terminates = (v) => { let d = v.d; while (d % 2 === 0) d /= 2; while (d % 5 === 0) d /= 5; return d === 1; };
+const numTex = (v) => (v.isInt ? String(v.n) : DEC === 'frac' ? v.tex() : DEC === 'dec' && terminates(v) ? String(v.n / v.d) : v.mixedTex());
 const PREC = { '+': 1, '-': 1, '*': 2, '/': 2, '^': 3 };
 const prec = (x) => (x.t === 'bin' ? PREC[x.op] : 9);
 export function tex(x, ctx = {}) {
@@ -39,8 +45,9 @@ export function tex(x, ctx = {}) {
       const s = numTex(x.v);
       return x.v.isNeg && (ctx.base || !ctx.first) ? `(${s})` : s;
     }
-    case 'neg': return '-' + tex(x.x, { first: true });
+    case 'neg': return x.x.t === 'n' && x.x.v.isNeg ? `-(${tex(x.x, { first: true })})` : '-' + tex(x.x, { first: true });
     case 'b': return `(${tex(x.x, { first: true })})`;
+    case 'sqrt': return `\\sqrt{${tex(x.x, { first: true })}}`;
     case 'bin': {
       if (x.op === '^') {
         const l = tex(x.l, { base: true, first: ctx.first });
@@ -60,7 +67,7 @@ export function allIntegers(x, limit = 1e6) {
   const ok = (v) => v.isInt && Math.abs(v.n) <= limit;
   switch (x.t) {
     case 'n': return ok(x.v);
-    case 'neg': case 'b': return allIntegers(x.x, limit) && ok(value(x));
+    case 'neg': case 'b': case 'sqrt': return allIntegers(x.x, limit) && ok(value(x));
     case 'bin': return allIntegers(x.l, limit) && allIntegers(x.r, limit) && ok(value(x));
   }
 }
@@ -70,12 +77,13 @@ const mapT = (x, f) => {
     case 'n': return x;
     case 'neg': return neg(mapT(x.x, f));
     case 'b': return f(br(mapT(x.x, f)));
+    case 'sqrt': return f(sqrt(mapT(x.x, f)));
     case 'bin': return f(bin(x.op, mapT(x.l, f), mapT(x.r, f)));
   }
 };
 const hasType = (x, pred) => {
   if (pred(x)) return true;
-  if (x.t === 'neg' || x.t === 'b') return hasType(x.x, pred);
+  if (x.t === 'neg' || x.t === 'b' || x.t === 'sqrt') return hasType(x.x, pred);
   if (x.t === 'bin') return hasType(x.l, pred) || hasType(x.r, pred);
   return false;
 };
@@ -83,12 +91,15 @@ const hasType = (x, pred) => {
 const stageBrackets = (x) => { const f = (y) => (y.t === 'b' ? n(value(y)) : y); return mapT(x, f); };
 const stagePowers = (x) => mapT(x, (y) => (y.t === 'bin' && y.op === '^' ? n(value(y)) : y));
 const stageMulDiv = (x) => mapT(x, (y) => (y.t === 'bin' && (y.op === '*' || y.op === '/') ? n(value(y)) : y));
+// inside a root: finish the sum under it, then take the root
+const stageRootIn = (x) => mapT(x, (y) => (y.t === 'sqrt' && y.x.t !== 'n' ? sqrt(n(value(y.x))) : y));
+const stageRoot = (x) => mapT(x, (y) => (y.t === 'sqrt' && y.x.t === 'n' ? n(value(y)) : y));
 const stageNeg = (x) => mapT(x, (y) => (y.t === 'neg' && y.x.t === 'n' ? n(value(y)) : y));
 
 // returns list of tex strings: the successive lines of working (not including the original)
 export function steps(x) {
   const out = []; let cur = x; let last = texTop(x);
-  const stages = [stageBrackets, stagePowers, stageNeg, stageMulDiv];
+  const stages = [stageBrackets, stagePowers, stageNeg, stageMulDiv, stageRootIn, stageRoot];
   for (const s of stages) {
     const nx = s(cur); const t = texTop(nx);
     if (t !== last) { out.push(t); last = t; cur = nx; }

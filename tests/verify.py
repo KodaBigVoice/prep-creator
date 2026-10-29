@@ -55,6 +55,7 @@ def tex2py(t):
 
 def S(tex, **ns):
     s = tex2py(tex)
+    s = re.sub(r'(?<![A-Za-z])as(?![A-Za-z])', 'a*s', s)      # 'as' is a Python keyword: 2as means 2*a*s
     return parse_expr(s, transformations=TR, local_dict={'pi': sp.pi, **ns}, evaluate=True)
 
 def numval(a):
@@ -161,9 +162,26 @@ for rec in recs:
             if sp.simplify(qq - aa) != 0: fail(rec, 'py: not equal')
             else: ok += 1
         elif k == 'subs':
-            e = S(c['expr'], **{v: sp.Integer(n) for v, n in c['vars'].items()})
+            e = S(c['expr'], **{v: sp.Rational(str(n)) for v, n in c['vars'].items()})
             val = sp.Rational(c['val'])
             if sp.simplify(e - val) != 0 or sp.simplify(S(rec['a']) - val) != 0: fail(rec, f'subs: {e} vs {val} vs answer')
+            else: ok += 1
+        elif k == 'which':
+            # which of several expressions is the largest / smallest: the shown answer must be that one, and it must be the only one
+            ns = {v: sp.Rational(str(n)) for v, n in c['vars'].items()}
+            vals = [S(e, **ns) for e in c['exprs']]
+            best = max(vals) if c['pick'] == 'max' else min(vals)
+            shown = S(rec['a'], **ns)
+            if vals.count(best) != 1: fail(rec, f'which: {c["pick"]} is not unique: {vals}')
+            elif sp.simplify(shown - best) != 0 or sp.simplify(shown - vals[c['exprs'].index(c['ans'])]) != 0: fail(rec, f'which: shown {shown}, {c["pick"]} is {best} of {vals}')
+            else: ok += 1
+        elif k == 'table':
+            # a table of values: every y matches the rule at its x, and the table shown holds exactly those y values
+            x = sp.Symbol(c['v'])
+            want = [S(c['expr'], **{c['v']: sp.Integer(xv)}) for xv in c['xs']]
+            row = rec['a'].split('y &')[-1]
+            shown = [int(m) for m in re.findall(r'-?\d+', row.replace('\\\\', ' ').replace('\\hline', ' '))]
+            if [int(w) for w in want] != c['ys'] or shown != c['ys']: fail(rec, f'table: rule gives {want}, listed {c["ys"]}, shown {shown}')
             else: ok += 1
         elif k == 'num':
             ns = {'sqrt': sp.sqrt, 'pi': sp.pi, 'gcd': math.gcd, 'lcm': math.lcm, 'Fraction': Fraction, 'round': round, 'floor': math.floor, 'len': len, 'range': range}

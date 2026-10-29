@@ -4,7 +4,7 @@
 const F = (pick, extra = {}) => ({ mode: 'fixed', pick, ...extra });
 const pool = (label, picks, extra = {}) => ({ mode: 'pool', label, candidates: picks.map(p => ({ pick: p, on: true })), ...extra });
 
-const POOL_A = ['substitution:*', 'pythagoras:*', 'hcf-lcm:*', 'prime-factorisation:*', 'rp-share2:*', 'rp-share3:*', 'rp-difference:*', 'rp-direct:*', 'rp-recipe:*', 'rp-inverse:*', 'pct-benchmark:*', 'pct-buildup:*', 'pct-harder:*', 'pct-of-another:*'];
+const POOL_A = ['sub-neg-add:*', 'sub-neg-mult:*', 'sub-neg-squares:*', 'sub-mixed:*', 'pythagoras:*', 'hcf-lcm:*', 'prime-factorisation:*', 'rp-share2:*', 'rp-share3:*', 'rp-difference:*', 'rp-direct:*', 'rp-recipe:*', 'rp-inverse:*', 'pct-benchmark:*', 'pct-buildup:*', 'pct-harder:*', 'pct-of-another:*'];
 const POOL_B = ['circles:*', 'area-shapes:*', 'volume-prisms:*', 'speed-distance-time:*', 'units-metric:*', 'standard-form:*', 'simultaneous:*', 'rounding:*'];
 const POOL_C = ['pct-change-by:*', 'pct-find-change:*', 'pct-reverse:*', 'pct-compound:*', 'averages:*', 'mean-unknown:*', 'probability:*'];
 const PS = ['problem-solving:*'];
