@@ -4,25 +4,26 @@
 const F = (pick, extra = {}) => ({ mode: 'fixed', pick, ...extra });
 const pool = (label, picks, extra = {}) => ({ mode: 'pool', label, candidates: picks.map(p => ({ pick: p, on: true })), ...extra });
 
-const POOL_A = ['sub-neg-add:*', 'sub-neg-mult:*', 'sub-neg-squares:*', 'sub-mixed:*', 'pythagoras:*', 'hcf-lcm:*', 'prime-factorisation:*', 'rp-share2:*', 'rp-share3:*', 'rp-difference:*', 'rp-direct:*', 'rp-recipe:*', 'rp-inverse:*', 'pct-benchmark:*', 'pct-buildup:*', 'pct-harder:*', 'pct-of-another:*'];
-const POOL_B = ['circles:*', 'area-shapes:*', 'volume-prisms:*', 'speed-distance-time:*', 'units-metric:*', 'standard-form:*', 'simultaneous:*', 'rounding:*'];
-const POOL_C = ['pct-change-by:*', 'pct-find-change:*', 'pct-reverse:*', 'pct-compound:*', 'averages:*', 'mean-unknown:*', 'probability:*'];
-const PS = ['problem-solving:*'];
+// A recipe slot: some topics at a level. Each new prep draws a different question that fits.
+const Q = (topics, level, extra = {}) => ({ mode: 'query', topics: [].concat(topics), level, ...extra });
+const MIX_A = ['Substitution', 'Pythagoras', 'HCF and LCM', 'Prime factorisation', 'Ratio and proportion', 'Percentages'];
+const MIX_B = ['Circles', 'Area', 'Volume of prisms', 'Speed, distance and time', 'Units and conversions', 'Standard form', 'Place value and rounding'];
+const MIX_C = ['Percentages', 'Averages', 'Probability'];
 
 export const STARTER_PRESETS = [
   {
-    id: 'starter-y7-additional', starter: true, set: 'Y7 Additional', name: 'Y7 Additional (starter)', minutes: 30,
+    id: 'starter-y7-additional', starter: true, set: 'Y7 Additional', name: 'Y7 Additional (starter recipe)', minutes: 30,
     questions: [
-      [F('bidmas-standard:bp'), F('bidmas-negatives:std')],
-      [F('fractions-mixed:sub-overlap'), F('fractions-divide:cancel')],
-      [F('indices-multiply:two'), F('indices-divide:frac'), pool('Expand or factorise', ['expand-simplify-subtract:lin', 'factorise-number-letter:std', 'factorise-number:two'])],
-      [F('equations-both-sides:pos'), F('equations-brackets:both'), F('equations-fraction:top')],
-      [pool('Question 5 pool', POOL_A)],
-      [pool('Question 6 pool', POOL_A)],
-      [pool('Question 7 pool', POOL_B)],
-      [pool('Question 8 pool', POOL_C)],
-      [pool('Problem solving', PS, { marks: [4], lines: [8] })],
-      [pool('Problem solving', PS, { marks: [4], lines: [8] })],
+      [Q('Order of operations (BIDMAS)', 'Core'), Q('Order of operations (BIDMAS)', 'Additional')],
+      [Q('Fractions', 'Core'), Q('Fractions', 'Additional')],
+      [Q('Indices', 'Core'), Q('Indices', 'Additional'), Q(['Expanding brackets', 'Factorising'], 'Additional')],
+      [Q('Equations', 'Core'), Q('Equations', 'Additional'), Q('Equations', 'Additional')],
+      [Q(MIX_A, 'Additional')],
+      [Q(MIX_A, 'Additional')],
+      [Q(MIX_B, 'Additional')],
+      [Q(MIX_C, 'Additional')],
+      [Q('Problem solving', 'Additional', { marks: [4], lines: [8] })],
+      [Q('Problem solving', 'Additional', { marks: [4], lines: [8] })],
     ],
   },
 ];

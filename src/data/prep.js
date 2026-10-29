@@ -2,6 +2,8 @@
 import { makeRng, newSeed } from '../core/rng.js';
 import { generate, parsePick, typeById, TYPES, defaultFlags, canon } from '../core/engine.js';
 import { setById, defaultRubric } from './sets.js';
+import { avoidFor, newAvoid, sceneOfSlot, clash, CLASHES } from './fresh.js';
+import { resolve, step, ladder, topicsOf, levelOf, byKey, isRange } from './query.js';
 
 let _id = 0;
 export const uid = () => `s${Date.now().toString(36)}${(_id++).toString(36)}${Math.floor(Math.random() * 1e4).toString(36)}`;
@@ -33,14 +35,29 @@ function fillSnapshot(slot) {
 }
 
 // def: the preset slot (fixed or pool); usedTopics: topics already in this prep
-export function makeSlot(def, usedTopics = new Set(), rng = makeRng(newSeed())) {
+export function makeSlot(def, usedTopics = new Set(), rng = makeRng(newSeed()), keys = new Set(), avoid = null) {
   const slot = { id: uid(), def: JSON.parse(JSON.stringify(def)), seed: newSeed(), locked: false, flags: null, edits: null };
-  choosePick(slot, usedTopics, rng);
+  choosePick(slot, usedTopics, rng, keys);
+  freshen(slot, avoid, () => { slot.seed = newSeed(); choosePick(slot, usedTopics, rng, keys); });
   return fillSnapshot(slot);
 }
-function choosePick(slot, usedTopics, rng) {
+// The fresh-scenario rule (soft): try a few other questions or numbers, keep the first that does not retell a recent story, else the least similar
+export function freshen(slot, avoid, retry) {
+  if (!avoid || slot.locked) return;
+  let best = null;
+  for (let i = 0; i < 8; i++) {
+    if (i) retry();
+    const c = clash(slot.pick, slot.seed, slot.flags, avoid, topicOfPick(slot.pick));
+    if (!best || c < best.c) best = { pick: slot.pick, seed: slot.seed, c };
+    if (c < CLASHES) break;
+  }
+  slot.pick = best.pick; slot.seed = best.seed;
+}
+const addScene = (avoid, slot) => { sceneOfSlot(slot).forEach(w => avoid.words.add(w)); avoid.keys.add(slot.pick); };
+function choosePick(slot, usedTopics, rng, usedKeys = new Set()) {
   const d = slot.def;
   if (d.mode === 'fixed') { slot.pick = resolvePick(d.pick, rng); return; }
+  if (d.mode === 'query') { slot.pick = chooseFromQuery(d, rng, usedKeys, slot.pick, usedTopics); return; }
   const on = d.candidates.filter(c => c.on);
   const pool = on.length ? on : d.candidates;
   let fresh = pool.filter(c => !usedTopics.has(topicOfPick(c.pick)));
@@ -48,12 +65,35 @@ function choosePick(slot, usedTopics, rng) {
   slot.pick = resolvePick(rng.pick(fresh).pick, rng);
 }
 
+// A query slot draws any option that fits the description; options already on this prep (and the one it had) are avoided when there is a choice
+function chooseFromQuery(d, rng, usedKeys, current, usedTopicSet = new Set()) {
+  let { list } = resolve(d);
+  if (!list.length) list = ladder(topicsOf(d));
+  if (!list.length) throw new Error('No questions match ' + JSON.stringify(d));
+  // several topics: choose a topic first (one not already on the prep if possible), so a big topic does not crowd out the others
+  const topics = [...new Set(list.map(e => e.topic))];
+  if (topics.length > 1) {
+    const fresh = topics.filter(t => !usedTopicSet.has(t));
+    const t = rng.pick(fresh.length ? fresh : topics);
+    list = list.filter(e => e.topic === t);
+  }
+  let c = list.filter(e => !usedKeys.has(e.key) && e.key !== current);
+  if (!c.length) c = list.filter(e => e.key !== current);
+  if (!c.length) c = list;
+  return rng.pick(c).key;
+}
+export const usedKeys = (prep, exceptSlotId = null) => {
+  const s = new Set();
+  prep.questions.forEach(q => q.slots.forEach(sl => { if (sl.id !== exceptSlotId && sl.pick) s.add(sl.pick); }));
+  return s;
+};
+
 export function prepFromPreset(preset, setId, name, rng = makeRng(newSeed())) {
   const set = setById[setId];
-  const used = new Set();
+  const used = new Set(), keys = new Set(), avoid = newAvoid();
   const questions = preset.questions.map((defs) => ({
     id: uid(),
-    slots: defs.map((d) => { const s = makeSlot(d, used, rng); used.add(s.meta.topic); return s; }),
+    slots: defs.map((d) => { const s = makeSlot(d, used, rng, keys, avoid); used.add(s.meta.topic); keys.add(s.pick); addScene(avoid, s); return s; }),
   }));
   return newPrep({ set: setId, name, minutes: preset.minutes ?? set.minutes, presetId: preset.id, rubricText: preset.rubricText, questions });
 }
@@ -70,14 +110,19 @@ export const usedTopics = (prep, exceptSlotId = null) => {
 // re-roll: same type, new numbers (pool slots choose again)
 export function rerollSlot(prep, slot) {
   if (slot.locked) return slot;
-  slot.seed = newSeed();
   slot.edits = null;
-  if (slot.def.mode === 'pool') choosePick(slot, usedTopics(prep, slot.id), makeRng(newSeed()));
-  else if (slot.def.pick && slot.def.pick.endsWith(':*')) {      // "any option of this type": roll a different option where there is one
-    const r = makeRng(newSeed()); const old = slot.pick; let next = resolvePick(slot.def.pick, r);
-    for (let i = 0; i < 6 && next === old && typeById[canon(slot.def.pick.slice(0, -2))].variants.length > 1; i++) next = resolvePick(slot.def.pick, r);
-    slot.pick = next;
-  }
+  const roll = () => {
+    slot.seed = newSeed();
+    if (slot.def.mode === 'pool') choosePick(slot, usedTopics(prep, slot.id), makeRng(newSeed()));
+    else if (slot.def.mode === 'query') choosePick(slot, usedTopics(prep, slot.id), makeRng(newSeed()), usedKeys(prep, slot.id));
+    else if (slot.def.pick && slot.def.pick.endsWith(':*')) {      // "any option of this type": roll a different option where there is one
+      const r = makeRng(newSeed()); const old = slot.pick; let next = resolvePick(slot.def.pick, r);
+      for (let i = 0; i < 6 && next === old && typeById[canon(slot.def.pick.slice(0, -2))].variants.length > 1; i++) next = resolvePick(slot.def.pick, r);
+      slot.pick = next;
+    }
+  };
+  roll();
+  freshen(slot, avoidFor(prep, slot.id), roll);
   return fillSnapshot(slot);
 }
 // next/previous variant while choosing by hand: keeps the type, changes the numbers
@@ -99,12 +144,42 @@ export function setMarks(slot, i, m) { slot.marks[i] = Math.max(1, Math.round(m)
 export function setLines(slot, i, l) { slot.lines[i] = Math.max(0.5, Math.round(l * 100) / 100); slot.linesManual[i] = true; }
 export function resetLines(slot, i) { slot.linesManual[i] = false; slot.lines[i] = Math.max(2, Math.round(slot.lineDefaults[i] * (slot.marks[i] / slot.markDefaults[i]) * 2) / 2); }
 
+// ---- choosing by description (Quick and Range) ----
+// Make a slot follow a query. The question changes only if the one it has no longer fits.
+export function setQuery(prep, slot, def) {
+  const old = slot.pick;
+  slot.def = { mode: 'query', ...def };
+  if (resolve(slot.def).list.some(e => e.key === old)) return slot;   // still fits: nothing else changes
+  slot.edits = null; slot.marksManual = []; slot.linesManual = []; slot.flags = null;
+  choosePick(slot, usedTopics(prep, slot.id), makeRng(newSeed()), usedKeys(prep, slot.id));
+  slot.seed = newSeed();
+  freshen(slot, avoidFor(prep, slot.id), () => { slot.seed = newSeed(); choosePick(slot, usedTopics(prep, slot.id), makeRng(newSeed()), usedKeys(prep, slot.id)); });
+  return fillSnapshot(slot);
+}
+// the query that describes a hand-picked question (so the person can switch to Quick or Range)
+export function queryOfPick(pick) {
+  const p = parsePick(pick.replace(/:\*$/, ''));
+  const e = p && byKey()[`${p.t.id}:${p.v.id}`];
+  return e ? { mode: 'query', topics: [e.topic], level: levelOf(e) } : null;
+}
+// Step to the next easier (-1) or harder (+1) question. Returns false at either end of the ladder.
+export function nudgeSlot(prep, slot, dir) {
+  if (slot.locked || slot.def.mode !== 'query') return false;
+  const s = step(slot.def, slot.pick, dir);
+  if (!s) return false;
+  slot.def = { ...slot.def, level: s.level };
+  slot.pick = s.entry.key; slot.seed = newSeed(); slot.edits = null; slot.marksManual = []; slot.linesManual = []; slot.flags = null;
+  freshen(slot, avoidFor(prep, slot.id), () => { slot.seed = newSeed(); });
+  fillSnapshot(slot);
+  return true;
+}
 export function addSlotToQuestion(prep, q, pick) {
-  const s = makeSlot({ mode: 'fixed', pick }, usedTopics(prep));
+  const s = makeSlot({ mode: 'fixed', pick }, usedTopics(prep), undefined, usedKeys(prep), avoidFor(prep));
   q.slots.push(s); return s;
 }
-export function addQuestion(prep, pick, index = null) {
-  const s = makeSlot({ mode: 'fixed', pick }, usedTopics(prep));
+export function addQuestion(prep, pick, index = null) { return addQuestionDef(prep, { mode: 'fixed', pick }, index); }
+export function addQuestionDef(prep, def, index = null) {
+  const s = makeSlot(def, usedTopics(prep), undefined, usedKeys(prep), avoidFor(prep));
   const q = { id: uid(), slots: [s] };
   if (index === null) prep.questions.push(q); else prep.questions.splice(index, 0, q);
   return q;

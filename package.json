@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "check": "node tests/check.mjs",
-    "verify": "node tests/check.mjs --dump tests/out.json && python3 tests/verify.py tests/out.json"
+    "verify": "node tests/check.mjs --dump tests/out.json && python3 tests/verify.py tests/out.json",
+    "test": "node tests/query.test.mjs && node tests/fresh.test.mjs && node tests/paginate.test.mjs && node tests/check.mjs --n=60"
   }
 }

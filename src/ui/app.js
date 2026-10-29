@@ -6,6 +6,7 @@ import { suggestName } from '../data/naming.js';
 import { STARTER_PRESETS } from '../data/presets.js';
 import * as P from '../data/prep.js';
 import * as FL from '../data/filelink.js';
+import { setHistory } from '../data/fresh.js';
 import { buildLayout, buildAnswerPages, DEFAULT_LAYOUT, FLOORS } from '../layout/layout.js';
 import { renderBuilder } from './builder.js';
 import { openHistory, openSavePreset } from './dialogs.js';
@@ -15,6 +16,7 @@ const store = loadStore();
 ctx.store = store;
 ctx.layout = { ...DEFAULT_LAYOUT, ...(store.settings.layout || {}) };
 ctx.save = () => saveStoreSoon(store);
+setHistory(() => store.preps);
 
 const presetsFor = (setId) => [...STARTER_PRESETS.filter(p => p.set === setId), ...store.presets.filter(p => p.set === setId)];
 const findPreset = (id) => STARTER_PRESETS.find(p => p.id === id) || store.presets.find(p => p.id === id);

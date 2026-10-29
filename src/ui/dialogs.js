@@ -123,12 +123,12 @@ export function openSavePreset() {
   const prep = ctx.prep;
   const name = h('input', { type: 'text', value: `${prep.set} preset`, style: { width: '100%' } });
   const m = modal({ title: 'Save as preset', narrow: true, body: h('div', {},
-    h('div', { class: 'hint', style: { marginBottom: '8px' } }, 'A preset keeps the type of each question, your pools and ticks, the marks and working space, and the time and rubric for this set. Starter presets cannot be overwritten, so give yours its own name.'),
+    h('div', { class: 'hint', style: { marginBottom: '8px' } }, 'A preset keeps how each question is chosen (a topic and level, a range, a pool, or one exact question), the marks and working space, and the time and rubric for this set. Starter presets cannot be overwritten, so give yours its own name.'),
     h('div', { class: 'kv' }, h('label', {}, 'Name'), name)),
   footer: [h('button', { class: 'btn', onClick: () => m.close() }, 'Cancel'), h('button', { class: 'btn primary', onClick: () => {
     const nm = name.value.trim(); if (!nm) return;
     const slotDef = (s) => {
-      const base = s.def.mode === 'pool' ? { mode: 'pool', label: s.def.label, candidates: s.def.candidates.map(c => ({ ...c })) } : { mode: 'fixed', pick: s.def.pick || s.pick };
+      const base = s.def.mode === 'pool' ? { mode: 'pool', label: s.def.label, candidates: s.def.candidates.map(c => ({ ...c })) } : s.def.mode === 'query' ? JSON.parse(JSON.stringify(s.def)) : { mode: 'fixed', pick: s.def.pick || s.pick };
       base.marks = s.marks.slice(); base.lines = s.lines.slice();
       return base;
     };

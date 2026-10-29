@@ -5,9 +5,9 @@ import { entries, typeById, generate, defaultFlags } from '../core/engine.js';
 import { newSeed } from '../core/rng.js';
 import { mathToHTML } from '../layout/render.js';
 
-const ALL = entries().map(e => ({ ...e, lv: [...new Set(e.levels.map(l => (l === 'Foundation' ? 'Core' : l)))] }));
+const ALL = entries().map(e => ({ ...e, lv: [...e.levels] }));
 const byKey = Object.fromEntries(ALL.map(e => [e.key, e]));
-const LEVEL_MODES = [['both', 'All levels'], ['Core', 'Core'], ['Additional', 'Additional'], ['Further', 'Further (beyond Additional)']];
+const LEVEL_MODES = [['both', 'All levels'], ['Foundation', 'Foundation'], ['Core', 'Core'], ['Additional', 'Additional'], ['Further', 'Further']];
 const tokens = (s) => s.toLowerCase().split(/\s+/).filter(Boolean);
 
 export function openPicker({ title = 'Choose a question', current = null, confirmLabel = 'Use this question', onPick, extraButtons = [] }) {

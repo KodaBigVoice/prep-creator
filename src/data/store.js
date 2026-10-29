@@ -28,6 +28,7 @@ export function importText(st, text) {
   for (const p of d.presets || []) presets[p.id] = p;
   st.preps = Object.values(preps); st.presets = Object.values(presets);
   st.ticks = { ...st.ticks, ...(d.ticks || {}) };
-  st.settings = { ...st.settings, ...(d.settings || {}), layout: { ...st.settings.layout, ...((d.settings || {}).layout || {}) }, rubrics: { ...st.settings.rubrics, ...((d.settings || {}).rubrics || {}) } };
+  st.settings = { ...st.settings, ...(d.settings || {}), layout: { ...st.settings.layout, ...((d.settings || {}).layout || {}) }, rubrics: { ...st.settings.rubrics, ...((d.settings || {}).rubrics || {}) },
+    pinned: [...new Set([...((st.settings || {}).pinned || []), ...(((d.settings || {}).pinned) || [])])] };
   return st;
 }
