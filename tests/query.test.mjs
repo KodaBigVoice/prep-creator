@@ -39,6 +39,13 @@ ok(diff >= 12, 'reroll changes the question: ' + diff);
 const q = queryOfPick('sub-neg-add:one-negative'); ok(q && q.topics[0] === 'Substitution' && LEVELS.includes(q.level), 'queryOfPick');
 const keep = makeSlot({ mode: 'fixed', pick: 'sub-neg-add:one-negative' }); const pk = keep.pick;
 setQuery(prep, keep, q); ok(keep.pick === pk && keep.def.mode === 'query', 'switching to quick keeps the question');
+// arrows work on any question: a fixed one becomes Quick; a pool stays a pool and keeps its topic
+const fx = makeSlot({ mode: 'fixed', pick: 'bidmas-standard:bp' }); prep.questions.push({ id: 'f', slots: [fx] });
+ok(nudgeSlot(prep, fx, 1) && fx.def.mode === 'query' && fx.def.topics[0] === 'Order of operations (BIDMAS)', 'nudge turns a fixed question into Quick');
+const pl = makeSlot({ mode: 'pool', label: 'P', candidates: ['pct-buildup:*', 'hcf-lcm:*', 'indices-multiply:*'].map(p => ({ pick: p, on: true })) }); prep.questions.push({ id: 'p', slots: [pl] });
+for (let i = 0; i < 12; i++) { const t = pl.meta.topic; nudgeSlot(prep, pl, i % 2 ? -1 : 1); ok(pl.def.mode === 'pool' && pl.meta.topic === t, 'pool nudge keeps the pool and the topic'); }
+const topics = new Set(); for (let i = 0; i < 60; i++) { rerollSlot(prep, pl); topics.add(pl.meta.topic); }
+ok(topics.size >= 2, 're-rolling a pool still moves between its topics: ' + [...topics]);
 // the starter recipe builds many times without errors, and every slot fits its description
 for (let i = 0; i < 40; i++) {
   const p = prepFromPreset(STARTER_PRESETS[0], 'Y7 Additional', 'x');

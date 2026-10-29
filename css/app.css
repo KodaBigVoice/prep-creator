@@ -298,3 +298,7 @@ body.resizing{cursor:col-resize;user-select:none}
 .qk-right .hint{margin:8px 0}
 .qk-prev{margin-top:10px}
 @media (max-width:760px){.qk{grid-template-columns:1fr}}
+.qk-tabs{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.qk-tabs .seg button{padding:3px 14px;font-size:13px}
+.qk-right .rwrap{max-width:none}
+.qrow .hint{margin:0}

@@ -146,32 +146,43 @@ export function resetLines(slot, i) { slot.linesManual[i] = false; slot.lines[i]
 
 // ---- choosing by description (Quick and Range) ----
 // Make a slot follow a query. The question changes only if the one it has no longer fits.
-export function setQuery(prep, slot, def) {
-  const old = slot.pick;
+export function setQuery(prep, slot, def, { redraw = false } = {}) {
+  const old = slot.pick, od = slot.def;
   slot.def = { mode: 'query', ...def };
-  if (resolve(slot.def).list.some(e => e.key === old)) return slot;   // still fits: nothing else changes
+  if (od && od.marks && !slot.def.marks) slot.def.marks = od.marks;
+  if (od && od.lines && !slot.def.lines) slot.def.lines = od.lines;
+  if (!redraw && resolve(slot.def).list.some(e => e.key === old)) return slot;   // still fits: nothing else changes
   slot.edits = null; slot.marksManual = []; slot.linesManual = []; slot.flags = null;
   choosePick(slot, usedTopics(prep, slot.id), makeRng(newSeed()), usedKeys(prep, slot.id));
   slot.seed = newSeed();
   freshen(slot, avoidFor(prep, slot.id), () => { slot.seed = newSeed(); choosePick(slot, usedTopics(prep, slot.id), makeRng(newSeed()), usedKeys(prep, slot.id)); });
   return fillSnapshot(slot);
 }
+export const entryOfPick = (pick) => { const p = parsePick(String(pick).replace(/:\*$/, '')); return p ? byKey()[`${p.t.id}:${p.v.id}`] || null : null; };
 // the query that describes a hand-picked question (so the person can switch to Quick or Range)
 export function queryOfPick(pick) {
   const p = parsePick(pick.replace(/:\*$/, ''));
   const e = p && byKey()[`${p.t.id}:${p.v.id}`];
   return e ? { mode: 'query', topics: [e.topic], level: levelOf(e) } : null;
 }
-// Step to the next easier (-1) or harder (+1) question. Returns false at either end of the ladder.
+// Step to the next easier (-1) or harder (+1) question in this question's topic. Works on any question:
+// a hand-picked one becomes a Quick question; a pool stays a pool (re-rolling still moves between its topics). False at either end.
 export function nudgeSlot(prep, slot, dir) {
-  if (slot.locked || slot.def.mode !== 'query') return false;
-  const s = step(slot.def, slot.pick, dir);
+  if (slot.locked) return false;
+  const e = entryOfPick(slot.pick); if (!e) return false;
+  const od = slot.def;
+  const def = od.mode === 'query' ? od : od.mode === 'pool' ? { mode: 'query', topics: [e.topic], level: null } : { mode: 'query', topics: [e.topic], level: levelOf(e) };
+  const s = step(def, e.key, dir);
   if (!s) return false;
-  slot.def = { ...slot.def, level: s.level };
+  if (od.mode !== 'pool') { slot.def = { ...def, level: s.level }; if (od.marks) slot.def.marks = od.marks; if (od.lines) slot.def.lines = od.lines; }
   slot.pick = s.entry.key; slot.seed = newSeed(); slot.edits = null; slot.marksManual = []; slot.linesManual = []; slot.flags = null;
   freshen(slot, avoidFor(prep, slot.id), () => { slot.seed = newSeed(); });
   fillSnapshot(slot);
   return true;
+}
+export function addSlotDef(prep, q, def) {
+  const s = makeSlot(def, usedTopics(prep), undefined, usedKeys(prep), avoidFor(prep));
+  q.slots.push(s); return s;
 }
 export function addSlotToQuestion(prep, q, pick) {
   const s = makeSlot({ mode: 'fixed', pick }, usedTopics(prep), undefined, usedKeys(prep), avoidFor(prep));

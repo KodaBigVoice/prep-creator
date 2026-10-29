@@ -10,7 +10,7 @@ const byKey = Object.fromEntries(ALL.map(e => [e.key, e]));
 const LEVEL_MODES = [['both', 'All levels'], ['Foundation', 'Foundation'], ['Core', 'Core'], ['Additional', 'Additional'], ['Further', 'Further']];
 const tokens = (s) => s.toLowerCase().split(/\s+/).filter(Boolean);
 
-export function openPicker({ title = 'Choose a question', current = null, confirmLabel = 'Use this question', onPick, extraButtons = [] }) {
+export function openPicker({ title = 'Choose a question', current = null, confirmLabel = 'Use this question', onPick, onSimple = null }) {
   const st = { q: '', level: 'both', topic: null, type: null, opt: null, f: { topic: '', type: '', opt: '' }, seed: newSeed(), flags: null, showAns: true, entryKey: null };
   const T = (s) => mathToHTML(s, ctx.katex);
   const inLevel = (e) => st.level === 'both' || e.lv.includes(st.level);
@@ -163,7 +163,7 @@ export function openPicker({ title = 'Choose a question', current = null, confir
       h('div', {}, selLine, preview, optsBox)));
   const m = modal({
     title, body, wide: true,
-    footer: [...extraButtons, h('button', { class: 'btn', onClick: () => m.close() }, 'Cancel'), h('button', { class: 'btn primary', onClick: use }, confirmLabel)],
+    footer: [h('button', { class: 'btn', onClick: () => m.close() }, 'Cancel'), onSimple ? h('button', { class: 'btn', onClick: () => { m.close(); onSimple(); } }, 'Go to simple picker') : null, h('button', { class: 'btn primary', onClick: use }, confirmLabel)],
   });
   results.style.display = 'none';
   if (current && byKey[current]) setFromKey(current);

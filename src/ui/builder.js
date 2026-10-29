@@ -3,8 +3,8 @@ import { ctx } from './state.js';
 import { composeQuestion } from '../layout/compose.js';
 import { mathToHTML } from '../layout/render.js';
 import { openPicker } from './picker.js';
-import { openQuickChooser, levelButtons, fallNote } from './quick.js';
-import { ladder, topicsOf, resolve, isRange, describe, byKey, levelOf } from '../data/query.js';
+import { openQuickChooser } from './quick.js';
+import { describe } from '../data/query.js';
 import { openPoolDialog, openEditDialog, pickName } from './dialogs.js';
 import * as P from '../data/prep.js';
 
@@ -48,6 +48,13 @@ export function renderBuilder(root) {
   else root.append(h('div', { class: 'colhead' + (aos ? ' aos' : '') }, h('span'), h('span', { class: 'qh' }, 'Question'), h('span', { class: 'c' }, 'Marks'), aos ? h('span', { class: 'c' }, 'Lines') : null, h('span')));
 
   prep.questions.forEach((q, qi) => {
+    try { drawCard(q, qi); } catch (err) {
+      console.error('Could not draw question', qi + 1, err);
+      root.append(h('div', { class: 'q-card' }, h('div', { class: 'q-head' }, h('span', { class: 'n' }, `${qi + 1}.`), h('span', { class: 'hint' }, `This question could not be shown (${err.message}). Try ↻ or Replace.`), h('span', { class: 'sp' }),
+        h('button', { class: 'btn small', onClick: () => { try { q.slots.forEach(sl => P.rerollSlot(prep, sl)); } catch (e2) { toast('Still cannot make it: ' + e2.message); } ctx.commit(); } }, '↻'))));
+    }
+  });
+  function drawCard(q, qi) {
     const cq = qs[qi];
     const isSel = sel && sel.q === qi;
     const card = h('div', { class: 'q-card' + (isSel ? ' sel' : '') },
@@ -77,24 +84,27 @@ export function renderBuilder(root) {
         h('div', { class: 'c' }, stepper({ value: p.marks, step: 1, min: 1, manual: manualM, title: 'Marks for this part', onChange: (v) => { P.setMarks(slot, p.pi, v); ctx.commit(); } })),
         aos ? h('div', { class: 'c' }, stepper({ value: p.lines, step: 0.5, min: 0.5, manual: manualL, title: 'Working space in ruled lines (decimals allowed)', onChange: (v) => { P.setLines(slot, p.pi, v); ctx.commit({ builder: true }); } })) : null,
         h('div', { class: 'c end' }, p.calc ? h('span', { class: 'calcico', title: 'Calculator question', 'aria-label': 'Calculator question', html: ICON_CALC }) : null,
-          firstOfSlot && slot.def.mode === 'query' ? [
-            h('button', { class: 'iconbtn nudge', title: 'Easier question', 'aria-label': 'Easier question', disabled: slot.locked, html: ICON_EASIER, onClick: () => nudge(slot, -1) }),
-            h('button', { class: 'iconbtn nudge', title: 'Harder question', 'aria-label': 'Harder question', disabled: slot.locked, html: ICON_HARDER, onClick: () => nudge(slot, 1) })] : null,
+          firstOfSlot ? [
+            h('button', { class: 'iconbtn nudge', title: 'Easier question (same topic)', 'aria-label': 'Easier question', disabled: slot.locked, html: ICON_EASIER, onClick: () => nudge(slot, -1) }),
+            h('button', { class: 'iconbtn nudge', title: 'Harder question (same topic)', 'aria-label': 'Harder question', disabled: slot.locked, html: ICON_HARDER, onClick: () => nudge(slot, 1) })] : null,
           firstOfSlot ? h('button', { class: 'iconbtn', title: slot.locked ? 'Locked' : (slot.def.mode === 'query' ? `Another question: ${describe(slot.def)}` : poolInfo(slot) ? `New question from pool: ${poolInfo(slot).text}` : 'New numbers (same kind of question)'), disabled: slot.locked, onClick: () => { P.rerollSlot(prep, slot); ctx.commit(); }, ...(poolInfo(slot) || slot.def.mode === 'query' ? { html: ICON_SHUFFLE } : {}) }, poolInfo(slot) || slot.def.mode === 'query' ? null : '↻') : null));
       card.append(row);
       if (isRowSel) card.append(detailPanel(q, qi, slot, p.si, cq, p));
     });
     root.append(card);
-  });
+  }
   root.append(h('div', { class: 'addrow' },
-    h('button', { class: 'btn', onClick: () => openQuickChooser({ title: 'Add a question', confirmLabel: 'Add question',
-      extraButtons: [{ label: 'Browse every question…', onClick: browseAdd }],
-      onDone: (def) => { P.addQuestionDef(prep, def); ctx.ui.sel = { q: prep.questions.length - 1, k: 0 }; ctx.commit(); } }) }, '+ Add question'),
+    h('button', { class: 'btn', onClick: addSimple }, '+ Add question'),
     h('button', { class: 'btn', title: 'Choose one exact question from the full list', style: { flex: '0 0 auto', width: 'auto' }, onClick: browseAdd }, 'Browse all…')));
+}
+function addSimple() {
+  const prep = ctx.prep;
+  openQuickChooser({ title: 'Add a question', confirmLabel: 'Add question', onBrowse: browseAdd,
+    onDone: (def) => { P.addQuestionDef(prep, def); ctx.ui.sel = { q: prep.questions.length - 1, k: 0 }; ctx.commit(); } });
 }
 function browseAdd() {
   const prep = ctx.prep;
-  openPicker({ title: 'Add a question', confirmLabel: 'Add question', onPick: (c) => { const q = P.addQuestion(prep, c.pick); P.applyChoice(q.slots[0], c); ctx.ui.sel = { q: prep.questions.length - 1, k: 0 }; ctx.commit(); } });
+  openPicker({ title: 'Add a question', confirmLabel: 'Use this question', onSimple: addSimple, onPick: (c) => { const q = P.addQuestion(prep, c.pick); P.applyChoice(q.slots[0], c); ctx.ui.sel = { q: prep.questions.length - 1, k: 0 }; ctx.commit(); } });
 }
 function nudge(slot, dir) {
   if (!P.nudgeSlot(ctx.prep, slot, dir)) { toast(dir > 0 ? 'That is the hardest question available here.' : 'That is the easiest question available here.'); return; }
@@ -111,25 +121,22 @@ function detailPanel(q, qi, slot, si, cq, part) {
   const abtn = (icon, label, fn, title) => h('button', { class: 'abtn', title, onClick: fn }, h('span', { html: icon }), label);
   const isPool = slot.def.mode === 'pool';
   const anyOpt = slot.def.mode === 'fixed' && slot.def.pick && slot.def.pick.endsWith(':*');
-  const mode = slot.def.mode === 'query' ? (isRange(slot.def) ? 'range' : 'quick') : slot.def.mode === 'fixed' ? 'exact' : null;
+  const isQuery = slot.def.mode === 'query';
   const pickLine = anyOpt ? pickName(slot.def.pick) + ' › any option' : pickName(slot.pick);
   const canRemove = cq.parts.length > 1 || prep.questions.length > 0;
   return h('div', { class: 'detail' },
     h('div', { class: 'dside' },
       h('button', { class: 'iconbtn boxed' + (slot.locked ? ' on' : ''), title: slot.locked ? 'Locked: re-roll will not change this. Click to unlock' : 'Lock: stop re-roll changing this question', html: slot.locked ? ICON_LOCK : ICON_UNLOCK, onClick: () => { slot.locked = !slot.locked; ctx.commit(); } }),
       canRemove ? h('button', { class: 'iconbtn danger', title: 'Remove this part', html: ICON_BIN, onClick: async () => { if (!(await confirmBox({ title: 'Remove this part?', message: 'It is removed from the question. You can bring it back with Undo.', confirmLabel: 'Remove', danger: true }))) return; P.removeSlot(prep, qi, si); ctx.ui.sel = null; ctx.commit(); } }) : null),
-    mode ? h('div', { class: 'modeRow' }, h('span', { class: 'qlab' }, 'Choose by'),
-      h('span', { class: 'seg', role: 'radiogroup', 'aria-label': 'How this question is chosen' },
-        [['quick', 'Quick', 'Pick a topic and a level; re-roll finds another question that fits'], ['range', 'Range', 'Choose a stretch of the difficulty ladder'], ['exact', 'Exact', 'This one question (new numbers when you re-roll)']]
-          .map(([id, label, title]) => h('button', { role: 'radio', title, 'aria-checked': mode === id, onClick: () => { if (mode !== id) modeTo(slot, id); } }, label)))) : null,
     h('div', { class: 'dpath' }, h('b', {}, pickLine), slot.meta && slot.meta.multipart ? h('span', { class: 'tag' }, 'multipart') : null, slot.locked ? h('span', { class: 'tag lock' }, 'locked') : null),
-    mode === 'quick' || mode === 'range' ? queryPanel(slot) : null,
+    isQuery ? h('div', { class: 'qrow' }, h('span', { class: 'qlab' }, 'Chosen by'), h('b', {}, describe(slot.def)),
+      h('button', { class: 'linkbtn', onClick: () => changeSlot(q, qi, slot) }, 'Change…'), h('span', { class: 'hint' }, 'Re-roll draws another that fits; ▲▼ step the difficulty.')) : null,
     isPool ? h('div', { class: 'poolline' }, h('span', { html: ICON_POOL }), h('span', {}, 'Drawn from pool: ', h('b', {}, poolInfo(slot).text)), h('button', { class: 'linkbtn', onClick: () => openPoolDialog(slot, qi, si) }, 'Choices…')) : null,
     anyOpt ? h('div', { class: 'hint' }, `A different option comes up each time you re-roll. This one is: ${slot.meta.label}.`) : null,
     range ? h('div', { class: 'hint' }, range) : null,
     h('div', { class: 'dbtns' },
       h('div', { class: 'abar' },
-      abtn(ICON_SWAP, mode === 'exact' || !mode ? 'Replace' : 'Pick exactly', () => changeSlot(q, qi, slot), 'Swap this for a different question'),
+      abtn(ICON_SWAP, 'Replace', () => changeSlot(q, qi, slot), 'Swap this for a different question'),
       abtn(ICON_EDIT, 'Edit', () => openEditDialog(slot, () => ctx.commit()), 'Change the wording or the answer'),
       h('button', { class: 'abtn', title: 'More options', 'data-menu-anchor': '', onClick: (e) => showMenu(e.currentTarget, [
         { label: '+ Add a part', onClick: () => addPart(qi) },
@@ -144,55 +151,6 @@ function detailPanel(q, qi, slot, si, cq, part) {
     slot.meta.integer ? h('label', { class: 'dint' }, h('input', { type: 'checkbox', checked: flagsInt, onChange: () => { P.setFlags(slot, { integer: !flagsInt }); ctx.commit(); } }), ' Integer answers only') : null);
 }
 
-// Switch how a question is chosen. The question on the sheet stays the same where it can.
-function modeTo(slot, mode) {
-  const prep = ctx.prep, d = slot.def;
-  const base = d.mode === 'query' ? d : P.queryOfPick(slot.pick);
-  if (!base) return;
-  const topics = topicsOf(base), cur = byKey()[slot.pick];
-  if (mode === 'exact') slot.def = { mode: 'fixed', pick: slot.pick };
-  else if (mode === 'quick') P.setQuery(prep, slot, { topics, level: base.level || (cur ? levelOf(cur) : 'Core') });
-  else {
-    const lvl = base.level, lst = lvl ? ladder(topics).filter(e => e.levels.includes(lvl)) : ladder(topics);
-    const L = lst.length ? lst : ladder(topics);
-    P.setQuery(prep, slot, { topics, level: null, lo: L[0].d, hi: L[L.length - 1].d });
-  }
-  ctx.commit();
-}
-// Quick: topic + level. Range: a stretch of the ladder.
-function queryPanel(slot) {
-  const prep = ctx.prep, d = slot.def, tops = topicsOf(d);
-  const topicRow = h('div', { class: 'qrow' }, h('span', { class: 'qlab' }, tops.length > 1 ? 'Topics' : 'Topic'), h('b', {}, tops.join(' + ')),
-    h('button', { class: 'linkbtn', onClick: () => openQuickChooser({ title: 'Change topic', confirmLabel: 'Use these topics', def: d, onDone: (nd) => { P.setQuery(prep, slot, { ...d, topics: nd.topics }); ctx.commit(); } }) }, 'Change…'));
-  if (isRange(d)) return h('div', { class: 'qpanel' }, topicRow, rangeSlider(slot));
-  const note = fallNote(d);
-  return h('div', { class: 'qpanel' }, topicRow,
-    h('div', { class: 'qrow' }, h('span', { class: 'qlab' }, 'Level'), levelButtons(tops, d.level, (l) => { P.setQuery(prep, slot, { ...d, level: l }); ctx.commit(); })),
-    note ? h('div', { class: 'hint' }, note) : null);
-}
-function rangeSlider(slot) {
-  const prep = ctx.prep, d = slot.def, tops = topicsOf(d), L = ladder(tops), n = L.length;
-  let i = L.findIndex(e => e.d >= d.lo - 1e-9); if (i < 0) i = 0;
-  let j = n - 1; while (j > 0 && L[j].d > d.hi + 1e-9) j--;
-  const mk = (v, label) => h('input', { type: 'range', min: 0, max: Math.max(1, n - 1), step: 1, value: v, 'aria-label': label });
-  const lo = mk(i, 'Easiest question to include'), hi = mk(j, 'Hardest question to include');
-  const band = h('span', { class: 'rband' }), info = h('div', { class: 'rinfo' });
-  const pct = (k) => (n > 1 ? (k / (n - 1)) * 100 : 0);
-  const draw = () => {
-    const a = +lo.value, b = +hi.value;
-    band.style.left = pct(a) + '%'; band.style.width = (pct(b) - pct(a)) + '%';
-    const cnt = resolve({ ...d, level: null, lo: L[a].d, hi: L[b].d }).list.length;
-    setKidsText(info, `Easiest: ${L[a].type} › ${L[a].label}`, `Hardest: ${L[b].type} › ${L[b].label}`, `${cnt} option${cnt === 1 ? '' : 's'} in this range`);
-  };
-  const setKidsText = (el, ...t) => el.replaceChildren(...t.map(x => h('div', {}, x)));
-  const clamp = (moved) => { if (+lo.value > +hi.value) { if (moved === lo) lo.value = hi.value; else hi.value = lo.value; } draw(); };
-  lo.addEventListener('input', () => clamp(lo)); hi.addEventListener('input', () => clamp(hi));
-  const commit = () => { P.setQuery(prep, slot, { ...d, level: null, lo: L[+lo.value].d, hi: L[+hi.value].d }); ctx.commit(); };
-  lo.addEventListener('change', commit); hi.addEventListener('change', commit);
-  draw();
-  return h('div', { class: 'qrow rrow' }, h('span', { class: 'qlab' }, 'Range'), h('div', { class: 'rwrap' }, h('div', { class: 'rtrack' }, h('span', { class: 'rbase' }), band, lo, hi), h('div', { class: 'rends' }, h('span', {}, 'easier'), h('span', {}, 'harder')), info));
-}
-
 function joinQuestion(qi, dir) {
   const prep = ctx.prep;
   const r = P.mergeQuestion(prep, qi, dir); if (!r) return;
@@ -204,17 +162,25 @@ function joinQuestion(qi, dir) {
 async function rerollAll() {
   const prep = ctx.prep;
   if (!(await confirmBox({ title: 'Re-roll every question?', message: 'Every question that is not locked gets new numbers. The current numbers cannot be brought back.', confirmLabel: 'Re-roll all' }))) return;
-  prep.questions.forEach(q => q.slots.forEach(s => P.rerollSlot(prep, s)));
+  let failed = 0;
+  prep.questions.forEach(q => q.slots.forEach(s => { try { P.rerollSlot(prep, s); } catch (e) { failed++; console.error('Re-roll failed', s.pick, e); } }));
   ctx.commit();
+  if (failed) toast(`${failed} question${failed === 1 ? '' : 's'} could not be re-rolled and ${failed === 1 ? 'was' : 'were'} left as they were.`, 5000);
 }
+// Replace a question. A Quick or Range question opens the simple picker (its topic and level filled in); anything else opens the full list first. Each can switch to the other.
 function changeSlot(q, qi, slot) {
-  openPicker({ title: `Choose a question for ${qi + 1}`, current: slot.pick, onPick: (c) => {
-    P.applyChoice(slot, c); ctx.commit();
-  } });
+  const prep = ctx.prep;
+  const simple = () => {
+    const def = slot.def.mode === 'query' ? slot.def : P.queryOfPick(slot.pick);
+    openQuickChooser({ title: `Choose a question for ${qi + 1}`, confirmLabel: 'Use this question', def, onBrowse: browse,
+      onDone: (d) => { P.setQuery(prep, slot, d, { redraw: true }); ctx.commit(); } });
+  };
+  const browse = () => openPicker({ title: `Choose a question for ${qi + 1}`, current: slot.pick, onSimple: simple, onPick: (c) => { P.applyChoice(slot, c); ctx.commit(); } });
+  if (slot.def.mode === 'query') simple(); else browse();
 }
 function addPart(qi) {
   const prep = ctx.prep, q = prep.questions[qi];
-  openPicker({ title: `Add a part to question ${qi + 1}`, confirmLabel: 'Add part', onPick: (c) => {
-    const s = P.addSlotToQuestion(prep, q, c.pick); P.applyChoice(s, c); ctx.commit();
-  } });
+  const simple = () => openQuickChooser({ title: `Add a part to question ${qi + 1}`, confirmLabel: 'Add part', onBrowse: browse, onDone: (def) => { P.addSlotDef(prep, q, def); ctx.commit(); } });
+  const browse = () => openPicker({ title: `Add a part to question ${qi + 1}`, confirmLabel: 'Add part', onSimple: simple, onPick: (c) => { const s = P.addSlotToQuestion(prep, q, c.pick); P.applyChoice(s, c); ctx.commit(); } });
+  browse();
 }
