@@ -33,6 +33,32 @@ export const VARIANT_D = {
   'fracprob-group:rest': 8, 'fracprob-group:of': 8.5,
   'fracprob-multi:share': 8.6, 'fracprob-multi:stages': 8.9, 'fracprob-multi:three': 9.4,
 
+  // Percentages, in ladder order
+  'pct-benchmark:half': 1.4, 'pct-benchmark:tenth': 1.7, 'pct-benchmark:quarter': 2, 'pct-benchmark:threeq': 2.5, 'pct-benchmark:ctx': 2.8,
+  'pct-buildup:tens': 2.9, 'pct-buildup:five': 3.2, 'pct-buildup:fives': 3.6, 'pct-buildup:one': 3.9, 'pct-buildup:ctx': 4.1,
+  'pct-harder:pence': 4.4, 'pct-harder:ctx': 4.7, 'pct-harder:over': 4.9, 'pct-harder:eighth': 5.3, 'pct-harder:twohalf': 5.6, 'pct-harder:seventeen': 6,
+  'pct-calc:whole': 4.8, 'pct-calc:money': 5, 'pct-calc:ctx': 5.3, 'pct-calc:decimal': 6,
+  'pct-of-another:easy': 3.4, 'pct-of-another:ctx': 4.2, 'pct-of-another:forty': 5.6, 'pct-of-another:simplify': 6.2, 'pct-of-another:calc': 6.6,
+  'pct-change-by:plain-inc': 3.7, 'pct-change-by:plain-dec': 3.9, 'pct-change-by:inc': 4.5, 'pct-change-by:dec': 4.7, 'pct-change-by:inc-calc': 5.4, 'pct-change-by:dec-calc': 5.6, 'pct-change-by:vat': 5.8, 'pct-change-by:over': 6.3, 'pct-change-by:decimal-calc': 6.6,
+  'pct-multiplier:inc': 5.8, 'pct-multiplier:dec': 6.1, 'pct-multiplier:decimal': 6.9, 'pct-multiplier:over': 7,
+  'pct-find-change:inc': 5, 'pct-find-change:profit': 5.2, 'pct-find-change:dec': 5.5, 'pct-find-change:loss': 5.7, 'pct-find-change:inc-calc': 6.5, 'pct-find-change:dec-calc': 6.8, 'pct-find-change:profit-calc': 7.2,
+  'pct-reverse:part-easy': 6.4, 'pct-reverse:sale': 6.8, 'pct-reverse:increase': 7, 'pct-reverse:sale-calc': 7.4, 'pct-reverse:increase-calc': 7.6, 'pct-reverse:vat': 7.8, 'pct-reverse:part': 7.2,
+  'pct-compound:two-step': 7.8, 'pct-compound:interest': 8.2, 'pct-compound:depreciation': 8.5,
+  'pct-repeat:price': 8.4, 'pct-repeat:multiplier': 8.8,
+  'pct-compound-find:years': 9.4, 'pct-compound-find:rate': 9.8,
+
+  // Percentages: problem solving, in ladder order
+  'pctprob-rest:percent': 3.8, 'pctprob-rest:count': 4.4,
+  'pctprob-survey:rest': 5, 'pctprob-survey:compare': 5.4,
+  'pctprob-group:of-of': 5.6, 'pctprob-group:of-rest': 6.2,
+  'pctprob-pay:overtime': 5.5, 'pctprob-pay:rise-year': 6.2, 'pctprob-pay:tax': 6.6,
+  'pctprob-whole:unit': 6.4, 'pctprob-whole:any': 7.4, 'pctprob-whole:rest': 7.8,
+  'pctprob-best-buy:percent': 6.4, 'pctprob-best-buy:fraction': 6.8, 'pctprob-best-buy:amount': 6.6,
+  'pctprob-profit:sell': 6.6, 'pctprob-profit:loss': 6.8, 'pctprob-profit:cost': 8.2,
+  'pctprob-sale-vat:sale-vat': 7.4, 'pctprob-sale-vat:two-discounts': 7.8,
+  'pctprob-fraction-ratio:fraction': 7.6, 'pctprob-fraction-ratio:percent-fraction': 7.8, 'pctprob-fraction-ratio:ratio': 8.2,
+  'pctprob-growth:grows': 8.4, 'pctprob-growth:falls': 8.6,
+
   // Fractions, decimals and percentages (FDP), in ladder order
   'fdp-dec-to-frac:tenths': 1.5, 'fdp-dec-to-frac:hundredths': 2.2, 'fdp-dec-to-frac:zero': 2.8, 'fdp-dec-to-frac:bigger': 3.2, 'fdp-dec-to-frac:thou': 4.2, 'fdp-dec-to-frac:thoubig': 4.8,
   'fdp-frac-to-dec:tenths': 2.4, 'fdp-frac-to-dec:hundredths': 3.2, 'fdp-frac-to-dec:mixed': 3.6, 'fdp-frac-to-dec:eighths': 4.6, 'fdp-frac-to-dec:harder': 5.4,
@@ -94,11 +120,6 @@ export const VARIANT_D = {
   'hcf-lcm:hcf': 3, 'hcf-lcm:lcm': 3.5, 'hcf-lcm:both': 4, 'hcf-lcm:hcf-big': 5, 'hcf-lcm:lcm-big': 5.5,
   'prime-factorisation:one': 4,
 
-  'percentage-of-amount:plain': 2, 'percentage-of-amount:worded': 3,
-  'percentage-change:increase': 3.5, 'percentage-change:decrease': 4, 'percentage-change:decrease-calc': 4.5, 'percentage-change:vat': 5,
-  'percentage-change-find:increase': 5, 'percentage-change-find:profit': 5.2, 'percentage-change-find:decrease': 5.5,
-  'reverse-percentages:sale': 6, 'reverse-percentages:increase': 6.5, 'reverse-percentages:sale-calc': 7,
-  'compound-interest:interest': 8, 'compound-interest:depreciation': 8.5,
 
   'ratio-share:two': 2, 'ratio-share:one': 3, 'ratio-share:three': 3.5,
   'ratio-difference:other': 4, 'ratio-difference:total': 5,

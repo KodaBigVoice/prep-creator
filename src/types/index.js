@@ -75,11 +75,28 @@ import substitution from './substitution.js';
 import pythagoras from './pythagoras.js';
 import hcfLcm from './hcf-lcm.js';
 import primeFactors from './prime-factors.js';
-import percentageOfAmount from './percentage-of-amount.js';
-import percentageChange from './percentage-change.js';
-import percentageChangeFind from './percentage-change-find.js';
-import reversePercentages from './reverse-percentages.js';
-import compoundInterest from './compound-interest.js';
+import pctBenchmark from './pct-benchmark.js';
+import pctBuildup from './pct-buildup.js';
+import pctHarder from './pct-harder.js';
+import pctCalc from './pct-calc.js';
+import pctOfAnother from './pct-of-another.js';
+import pctChangeBy from './pct-change-by.js';
+import pctMultiplier from './pct-multiplier.js';
+import pctFindChange from './pct-find-change.js';
+import pctReverse from './pct-reverse.js';
+import pctCompound from './pct-compound.js';
+import pctRepeat from './pct-repeat.js';
+import pctCompoundFind from './pct-compound-find.js';
+import pctprobRest from './pctprob-rest.js';
+import pctprobWhole from './pctprob-whole.js';
+import pctprobGroup from './pctprob-group.js';
+import pctprobSurvey from './pctprob-survey.js';
+import pctprobBestBuy from './pctprob-best-buy.js';
+import pctprobPay from './pctprob-pay.js';
+import pctprobSaleVat from './pctprob-sale-vat.js';
+import pctprobProfit from './pctprob-profit.js';
+import pctprobFractionRatio from './pctprob-fraction-ratio.js';
+import pctprobGrowth from './pctprob-growth.js';
 import ratioShare from './ratio-share.js';
 import ratioDifference from './ratio-difference.js';
 import proportionDirect from './proportion-direct.js';
@@ -104,5 +121,5 @@ export default [
   fdpDecToFrac, fdpFracToDec, fdpPercToFd, fdpToPerc, fdpTable, fdpOrder, fdpBeyond, fdpMixedCalc, fdpRecurringId, fdpRecurringFrac,
   indicesMultiply, indicesDivide, expandNumber, expandLetter, expandSimplifyAdd, expandSimplifySubtract, expandPowers, expandPowersHigh, expandDouble, expandDoubleCoef, expandSquare, expandDots, expandSimplifyDouble, expandTriple, factoriseNumber, factoriseLetter, factoriseNumberLetter, factoriseTwoLetters, factorisePowers, factorisePowersHigh, factoriseQuadratic, factoriseSquares, factoriseAx2, factoriseFull,
   equationsOneStep, equationsTwoStep, equationsBothSides, equationsBothSidesRight, equationsBothSidesNegative, equationsBrackets, equationsFraction, equationsTwoFractions, expandThenSolve, equationsQuadraticSimple, equationsQuadraticFactorise, equationsDenominator,
-  substitution, pythagoras, hcfLcm, primeFactors, percentageOfAmount, percentageChange, percentageChangeFind, reversePercentages, compoundInterest, ratioShare, ratioDifference, proportionDirect, proportionInverse, speedDistanceTime, circles, areaShapes, volumePrisms, unitsMetric, standardForm, simultaneous, rounding, averages, meanUnknown, probability, problemSolving,
+  substitution, pythagoras, hcfLcm, primeFactors, pctBenchmark, pctBuildup, pctHarder, pctCalc, pctOfAnother, pctChangeBy, pctMultiplier, pctFindChange, pctReverse, pctCompound, pctRepeat, pctCompoundFind, pctprobRest, pctprobWhole, pctprobGroup, pctprobSurvey, pctprobBestBuy, pctprobPay, pctprobSaleVat, pctprobProfit, pctprobFractionRatio, pctprobGrowth, ratioShare, ratioDifference, proportionDirect, proportionInverse, speedDistanceTime, circles, areaShapes, volumePrisms, unitsMetric, standardForm, simultaneous, rounding, averages, meanUnknown, probability, problemSolving,
 ];

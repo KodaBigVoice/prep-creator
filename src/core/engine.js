@@ -18,8 +18,14 @@ const ALIAS = {
   'fractions-add': 'fractions-mixed:add-plain', 'fractions-add:plain': 'fractions-mixed:add-plain', 'fractions-add:carry': 'fractions-mixed:add-carry',
   'fractions-subtract': 'fractions-mixed:sub-plain', 'fractions-subtract:plain': 'fractions-mixed:sub-plain', 'fractions-subtract:any': 'fractions-mixed:sub-any', 'fractions-subtract:overlap': 'fractions-mixed:sub-overlap',
   'equations-simple:one': 'equations-one-step:add', 'equations-simple:two': 'equations-two-step:std', 'equations-simple:frac': 'equations-two-step:frac',
+  'percentage-of-amount': 'pct-buildup:fives', 'percentage-of-amount:plain': 'pct-buildup:fives', 'percentage-of-amount:worded': 'pct-buildup:ctx',
+  'percentage-change': 'pct-change-by:dec', 'percentage-change:decrease': 'pct-change-by:dec', 'percentage-change:increase': 'pct-change-by:inc', 'percentage-change:decrease-calc': 'pct-change-by:dec-calc', 'percentage-change:vat': 'pct-change-by:vat',
+  'percentage-change-find': 'pct-find-change:inc', 'percentage-change-find:profit': 'pct-find-change:profit', 'percentage-change-find:increase': 'pct-find-change:inc', 'percentage-change-find:decrease': 'pct-find-change:dec',
+  'reverse-percentages': 'pct-reverse:sale', 'reverse-percentages:sale': 'pct-reverse:sale', 'reverse-percentages:increase': 'pct-reverse:increase', 'reverse-percentages:sale-calc': 'pct-reverse:sale-calc',
+  'compound-interest': 'pct-compound:interest', 'compound-interest:interest': 'pct-compound:interest', 'compound-interest:depreciation': 'pct-compound:depreciation',
 };
-export const canon = (p) => ALIAS[p] ?? p;
+// 'oldType:*' (any option) follows the old type to its new one
+export const canon = (p) => { if (ALIAS[p]) return ALIAS[p]; const m = /^(.+):\*$/.exec(p); return m && ALIAS[m[1]] ? ALIAS[m[1]].split(':')[0] + ':*' : p; };
 
 // a pick is "typeId" or "typeId:variantId"
 export function parsePick(pick) {
