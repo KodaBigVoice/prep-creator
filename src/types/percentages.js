@@ -54,16 +54,16 @@ export function wOf(A, p, val) {
   const v = dstr(val);
   if (p === 50) return `${A} \\div 2 = ${v}`;
   if (p === 25) return `${A} \\div 4 = ${v}`;
-  if (p === 75) return `25\\% = ${a(25)};\\ 75\\% = ${v}`;
+  if (p === 75) return `25\\% \\to ${a(25)};\\ 75\\% \\to ${v}`;
   if (p === 10) return `${A} \\div 10 = ${v}`;
   if (p === 12.5) return `${A} \\div 8 = ${v}`;
-  if (p === 17.5) return `10\\% = ${a(10)};\\ 5\\% = ${a(5)};\\ 2.5\\% = ${a(2.5)};\\ 17.5\\% = ${v}`;
-  if (p === 2.5) return `10\\% = ${a(10)};\\ 5\\% = ${a(5)};\\ 2.5\\% = ${v}`;
-  if (p > 100) return `100\\% = ${A};\\ ${pc(p - 100)} = ${a(p - 100)};\\ ${pc(p)} = ${v}`;
-  if (p % 10 === 0) return `10\\% = ${a(10)};\\ ${pc(p)} = ${v}`;
-  if (p === 5) return `10\\% = ${a(10)};\\ 5\\% = ${v}`;
-  if (p % 5 === 0) return `10\\% = ${a(10)};\\ 5\\% = ${a(5)};\\ ${pc(p)} = ${v}`;
-  return `1\\% = ${a(1)};\\ ${pc(p)} = ${v}`;
+  if (p === 17.5) return `10\\% \\to ${a(10)};\\ 5\\% \\to ${a(5)};\\ 2.5\\% \\to ${a(2.5)};\\ 17.5\\% \\to ${v}`;
+  if (p === 2.5) return `10\\% \\to ${a(10)};\\ 5\\% \\to ${a(5)};\\ 2.5\\% \\to ${v}`;
+  if (p > 100) return `100\\% \\to ${A};\\ ${pc(p - 100)} \\to ${a(p - 100)};\\ ${pc(p)} \\to ${v}`;
+  if (p % 10 === 0) return `10\\% \\to ${a(10)};\\ ${pc(p)} \\to ${v}`;
+  if (p === 5) return `10\\% \\to ${a(10)};\\ 5\\% \\to ${v}`;
+  if (p % 5 === 0) return `10\\% \\to ${a(10)};\\ 5\\% \\to ${a(5)};\\ ${pc(p)} \\to ${v}`;
+  return `1\\% \\to ${a(1)};\\ ${pc(p)} \\to ${v}`;
 }
 // calculator working: decimal multiplier
 export const wCalc = (A, p, val) => `${dstr(pctF(p).div(100))} \\times ${A} = ${dstr(val)}`;

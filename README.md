@@ -1,4 +1,4 @@
-# PMU: Prep Maths Universe
+# PMU | Prep Maths Universe
 
 A web app for building maths prep worksheets: pick a preset (or build one), get a fresh set of numbers every time, and print to PDF — questions only, or with working space on the sheet — plus an answers PDF.
 

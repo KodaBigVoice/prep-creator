@@ -23,6 +23,6 @@ export default {
     }
     const [C, p] = r.until(() => { const C = r.pick(it.cs), p = r.pick([10, 20, 25, 30, 40, 50, 60, 15, 35]); const S = F.of(C).mul(100 + p).div(100); return 100 % S.d === 0 ? [C, p] : null; });
     const S = F.of(C).mul(100 + p).div(100);
-    return { parts: [{ body: `${n} sells ${an(item)} for ${pounds(S.val)}. This gives ${n} a profit of ${p}% on the price that ${n} paid for it. How much did ${n} pay for the ${item}?`, a: GBP.tex(C), w: M(`${100 + p}\\% = ${dstr(S)};\\ 1\\% = ${dstr(S.div(100 + p))};\\ 100\\% = ${C}`), ...mk(3, GBP), chk: numChk(`${dstr(S)}/(100+${p})*100`, C) }] };
+    return { parts: [{ body: `${n} sells ${an(item)} for ${pounds(S.val)}. This gives ${n} a profit of ${p}% on the price that ${n} paid for it. How much did ${n} pay for the ${item}?`, a: GBP.tex(C), w: M(`${100 + p}\\% \\to ${dstr(S)};\\ 1\\% \\to ${dstr(S.div(100 + p))};\\ 100\\% \\to ${C}`), ...mk(3, GBP), chk: numChk(`${dstr(S)}/(100+${p})*100`, C) }] };
   },
 };

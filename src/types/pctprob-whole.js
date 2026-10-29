@@ -28,7 +28,7 @@ export default {
       return a.isInt && a.val >= 3 && W !== 100 ? [c, p, W, a.n] : null;
     });
     const aTxt = c.u.money ? pounds(a) : c.u.count ? String(a) : c.u.txt(a);
-    const wk = (100 % p === 0) ? `${p}\\% = ${a};\\ 100\\% = ${a} \\times ${100 / p} = ${W}` : `${p}\\% = ${a};\\ 1\\% = ${dstr(new F(a, p))};\\ 100\\% = ${W}`;
+    const wk = (100 % p === 0) ? `${p}\\% \\to ${a};\\ 100\\% \\to ${a} \\times ${100 / p} = ${W}` : `${p}\\% \\to ${a};\\ 1\\% \\to ${dstr(new F(a, p))};\\ 100\\% \\to ${W}`;
     if (v.k === 'whole') return { parts: [{ body: c.mk(n, p, aTxt), a: c.u.tex(W), w: M(wk), ...mk(2, c.u), chk: numChk(`${a}/${p}*100`, W) }] };
     const rest = W - a;
     return { parts: [{ body: c.rest(n, p, aTxt), a: c.u.tex(rest), w: M(`${wk};\\ ${W} - ${a} = ${rest}`), ...mk(3, c.u), chk: numChk(`${a}/${p}*100-${a}`, rest) }] };

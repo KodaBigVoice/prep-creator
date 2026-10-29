@@ -131,7 +131,7 @@ function renderToolbar() {
   setKids(toolbar,
     h('button', { class: 'iconbtn hamburger', 'aria-label': 'Options', 'aria-pressed': !!ctx.ui.sidebar, title: ctx.ui.sidebar ? 'Hide the options panel' : 'Show the options panel', onClick: toggleSidebar },
       h('span', { html: '<svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 5h12M3 9h12M3 13h12"/></svg>' })),
-    h('img', { class: 'applogo', src: 'logo.svg', alt: 'PMU: Prep Maths Universe', title: 'PMU: Prep Maths Universe' }),
+    h('img', { class: 'applogo', src: 'logo.svg', alt: 'PMU | Prep Maths Universe', title: 'PMU | Prep Maths Universe' }),
     h('button', { class: 'btn', 'data-menu-anchor': '', onClick: (e) => newMenu(e.currentTarget) }, 'New ▾'),
     h('div', { class: 'field' }, h('label', {}, 'Name'), nameIn),
     h('span', { class: 'sp' }),

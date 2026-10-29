@@ -50,7 +50,7 @@ export default {
       const u = c.u;
       const body = c.mk(n, p, c.u ? (c.u === GBP ? pounds(a) : (c.u.txt ? c.u.txt(a) : a)) : String(a), c.item ? shopFor(r, W) : null);
       const ans = u ? u.tex(W) : String(W);
-      const w = p === 50 ? `50\\% = ${a};\\ 100\\% = ${a} \\times 2 = ${W}` : (100 % p === 0 ? `${p}\\% = ${a};\\ 100\\% = ${a} \\times ${100 / p} = ${W}` : `${p}\\% = ${a};\\ 1\\% = ${dstr(new F(a * 100, p * 100))};\\ 100\\% = ${W}`);
+      const w = p === 50 ? `50\\% \\to ${a};\\ 100\\% \\to ${a} \\times 2 = ${W}` : (100 % p === 0 ? `${p}\\% \\to ${a};\\ 100\\% \\to ${a} \\times ${100 / p} = ${W}` : `${p}\\% \\to ${a};\\ 1\\% \\to ${dstr(new F(a * 100, p * 100))};\\ 100\\% \\to ${W}`);
       return { parts: [{ body, a: ans, w: M(w), ...mk(2, u), chk: numChk(`${a}/${p}*100`, W) }] };
     }
     const dir = v.k === 'dec' ? -1 : 1;
@@ -71,7 +71,7 @@ export default {
     const nText = c.u === GBP ? pounds(N.val) : dstr(N);
     const body = c.mk(n, p, c.u === GBP ? pounds(N.val) : plainNum(dstr(N)), c.item ? shopFor(r, O) : null);
     const pc = 100 + dir * p;
-    const w = v.calc ? `${dstr(N)} \\div ${dstr(new F(pc, 100))} = ${O}` : `${pc}\\% = ${dstr(N)};\\ 1\\% = ${dstr(N.div(pc))};\\ 100\\% = ${O}`;
+    const w = v.calc ? `${dstr(N)} \\div ${dstr(new F(pc, 100))} = ${O}` : `${pc}\\% \\to ${dstr(N)};\\ 1\\% \\to ${dstr(N.div(pc))};\\ 100\\% \\to ${O}`;
     return { parts: [{ body, a: c.u.tex(O), w: M(w), calc: !!v.calc, ...mk(2, c.u), chk: numChk(`${dstr(N)}/${pc}*100`, O) }] };
   },
 };
