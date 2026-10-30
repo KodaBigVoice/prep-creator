@@ -4,7 +4,7 @@ import { composeQuestion } from '../layout/compose.js';
 import { mathToHTML } from '../layout/render.js';
 import { openPicker } from './picker.js';
 import { openQuickChooser } from './quick.js';
-import { describe } from '../data/query.js';
+import { describe, isRange } from '../data/query.js';
 import { openPoolDialog, openEditDialog, pickName } from './dialogs.js';
 import { typeById } from '../core/engine.js';
 import * as P from '../data/prep.js';
@@ -143,9 +143,7 @@ function detailPanel(q, qi, slot, si, cq, part) {
     h('div', { class: 'dside' },
       h('button', { class: 'iconbtn boxed' + (slot.locked ? ' on' : ''), title: slot.locked ? 'Locked: re-roll will not change this. Click to unlock' : 'Lock: stop re-roll changing this question', html: slot.locked ? ICON_LOCK : ICON_UNLOCK, onClick: () => { slot.locked = !slot.locked; ctx.commit(); } }),
       canRemove ? h('button', { class: 'iconbtn danger', title: q.slots.length > 1 ? 'Remove this part' : 'Remove this question', html: ICON_BIN, onClick: async () => { if (!(await confirmBox({ title: q.slots.length > 1 ? 'Remove this part?' : `Remove question ${qi + 1}?`, message: q.slots.length > 1 ? 'It is removed from the question. You can bring it back with Undo.' : 'The question is removed from this prep. You can bring it back with Undo.', confirmLabel: 'Remove', danger: true }))) return; P.removeSlot(prep, qi, si); ctx.ui.sel = null; ctx.commit(); } }) : null),
-    h('div', { class: 'dpath' }, h('b', {}, pickTopic), pickRest ? h('span', { class: 'dpath-rest' }, ' › ' + pickRest) : null, slot.meta && slot.meta.multipart ? h('span', { class: 'tag' }, 'multipart') : null, slot.locked ? h('span', { class: 'tag lock' }, 'locked') : null),
-    isQuery ? h('div', { class: 'qrow' }, h('span', { class: 'qlab' }, 'Chosen by'), h('b', {}, describe(slot.def)),
-      h('button', { class: 'linkbtn', onClick: () => changeSlot(q, qi, slot) }, 'Change…'), h('span', { class: 'hint' }, 'Re-roll draws another question that fits.')) : null,
+    h('div', { class: 'dpath' }, h('b', {}, pickTopic), isQuery ? h('span', { class: 'tag lvtag', title: isRange(slot.def) ? 'A range of the difficulty ladder: ⤮ draws another question from it' : `${slot.def.level} level: ⤮ draws another question from this topic at this level` }, isRange(slot.def) ? 'range' : slot.def.level) : null, pickRest ? h('span', { class: 'dpath-rest' }, ' › ' + pickRest) : null, slot.meta && slot.meta.multipart ? h('span', { class: 'tag' }, 'multipart') : null, slot.locked ? h('span', { class: 'tag lock' }, 'locked') : null),
     anyOpt ? h('div', { class: 'hint' }, `A different option comes up each time you re-roll. This one is: ${slot.meta.label}.`) : null,
     range ? h('div', { class: 'hint' }, range) : null,
     h('div', { class: 'dbtns' },

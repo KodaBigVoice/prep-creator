@@ -314,3 +314,4 @@ body.resizing{cursor:col-resize;user-select:none}
 .toastbtn{margin-left:12px;border:0;background:transparent;color:#9db5ee;font-weight:600;cursor:pointer;padding:0}
 .toastbtn:hover{text-decoration:underline}
 .splitbtn>.btn.small.arrow{padding:3px 7px}
+.detail .dpath .tag.lvtag{margin:0 6px 0 7px;background:#e6edfd;color:#1f4fd8}
