@@ -86,7 +86,10 @@ export function renderBuilder(root) {
         h('div', { class: 'c' }, stepper({ value: p.marks, step: 1, min: 1, manual: manualM, title: 'Marks for this part', onChange: (v) => { P.setMarks(slot, p.pi, v); ctx.commit(); } })),
         aos ? h('div', { class: 'c' }, stepper({ value: p.lines, step: 0.5, min: 0.5, manual: manualL, title: 'Working space in ruled lines (decimals allowed)', onChange: (v) => { P.setLines(slot, p.pi, v); ctx.commit({ builder: true }); } })) : null,
         h('div', { class: 'c end' }, p.calc ? h('span', { class: 'calcico', title: 'Calculator question', 'aria-label': 'Calculator question', html: ICON_CALC }) : null,
-          firstOfSlot ? h('button', { class: 'iconbtn', title: slot.locked ? 'Locked' : (slot.def.mode === 'query' ? `Another question: ${describe(slot.def)}` : poolInfo(slot) ? `New question from pool: ${poolInfo(slot).text}` : 'New numbers (same kind of question)'), disabled: slot.locked, onClick: () => { P.rerollSlot(prep, slot); ctx.commit(); }, ...(poolInfo(slot) || slot.def.mode === 'query' ? { html: ICON_SHUFFLE } : {}) }, poolInfo(slot) || slot.def.mode === 'query' ? null : '↻') : null));
+          firstOfSlot ? [
+            slot.def.mode === 'query' || slot.def.mode === 'pool' || (slot.def.pick && slot.def.pick.endsWith(':*'))
+              ? h('button', { class: 'iconbtn', title: slot.locked ? 'Locked' : slot.def.mode === 'pool' ? `A different question from the pool: ${poolInfo(slot).text}` : slot.def.mode === 'query' ? `A different question: ${describe(slot.def)}` : 'A different option of this kind of question', 'aria-label': 'Different question', disabled: slot.locked, html: ICON_SHUFFLE, onClick: () => { P.rerollSlot(prep, slot); ctx.commit(); } }) : null,
+            h('button', { class: 'iconbtn', title: slot.locked ? 'Locked' : 'New numbers (same question)', 'aria-label': 'New numbers', disabled: slot.locked, onClick: () => { P.renumber(prep, slot); ctx.commit(); } }, '↻')] : null));
       card.append(row);
       if (isRowSel) card.append(detailPanel(q, qi, slot, p.si, cq, p));
     });

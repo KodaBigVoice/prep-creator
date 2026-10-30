@@ -126,6 +126,14 @@ export function rerollSlot(prep, slot) {
   return fillSnapshot(slot);
 }
 // next/previous variant while choosing by hand: keeps the type, changes the numbers
+// same question, new numbers (steering clear of a recent story where it can)
+export function renumber(prep, slot) {
+  if (slot.locked) return slot;
+  slot.edits = null;
+  const roll = () => { slot.seed = newSeed(); };
+  roll(); freshen(slot, avoidFor(prep, slot.id), roll);
+  return fillSnapshot(slot);
+}
 export function reseed(slot, seed = newSeed()) { slot.seed = seed; slot.edits = null; return fillSnapshot(slot); }
 export function setFlags(slot, flags) { slot.flags = { ...(slot.flags || {}), ...flags }; return fillSnapshot(slot); }
 // choose a specific type/variant by hand: the slot becomes a fixed slot

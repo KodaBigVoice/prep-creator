@@ -1,6 +1,6 @@
 // Choosing by description: levels, ladder order, nudging, recipes.
 import { LEVELS, ladder, levelCounts, resolve, step, topicList } from '../src/data/query.js';
-import { makeSlot, nudgeSlot, rerollSlot, setQuery, queryOfPick, newPrep, prepFromPreset } from '../src/data/prep.js';
+import { makeSlot, nudgeSlot, rerollSlot, renumber, setQuery, queryOfPick, newPrep, prepFromPreset } from '../src/data/prep.js';
 import { STARTER_PRESETS } from '../src/data/presets.js';
 let bad = 0;
 const ok = (c, m) => { if (!c) { bad++; console.log('FAIL', m); } };
@@ -46,6 +46,11 @@ const pl = makeSlot({ mode: 'pool', label: 'P', candidates: ['pct-buildup:*', 'h
 for (let i = 0; i < 12; i++) { const t = pl.meta.topic; nudgeSlot(prep, pl, i % 2 ? -1 : 1); ok(pl.def.mode === 'pool' && pl.meta.topic === t, 'pool nudge keeps the pool and the topic'); }
 const topics = new Set(); for (let i = 0; i < 60; i++) { rerollSlot(prep, pl); topics.add(pl.meta.topic); }
 ok(topics.size >= 2, 're-rolling a pool still moves between its topics: ' + [...topics]);
+// new numbers keeps the question (also after a nudge); a different question may change it
+const nq = makeSlot({ mode: 'query', topics: ['Equations'], level: 'Core' }); prep.questions.push({ id: 'n', slots: [nq] });
+nudgeSlot(prep, nq, 1); const keepKey = nq.pick, keepDef = JSON.stringify(nq.def);
+let changedNums = 0; for (let i = 0; i < 20; i++) { const b = nq.snapshot.parts[0].body; renumber(prep, nq); ok(nq.pick === keepKey && JSON.stringify(nq.def) === keepDef, 'renumber keeps the question and its definition'); if (nq.snapshot.parts[0].body !== b) changedNums++; }
+ok(changedNums >= 15, 'renumber changes the numbers: ' + changedNums);
 // the starter recipe builds many times without errors, and every slot fits its description
 for (let i = 0; i < 40; i++) {
   const p = prepFromPreset(STARTER_PRESETS[0], 'Y7 Additional', 'x');
