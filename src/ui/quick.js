@@ -89,7 +89,7 @@ function choiceCard(c, { onChange, onRemove, open, onToggleOpen }) {
 
 // The simple picker: choose topic(s), then a level (Quick), a stretch of the ladder (Range), or per-topic levels and options (Pool).
 // `def` is an existing query or pool (to change it) or null. onBrowse (optional) adds a button that swaps to the full list of questions.
-export function openQuickChooser({ title = 'Add a question', confirmLabel = 'Use this question', def = null, onDone, onBrowse = null, browseLabel = 'Browse all questions', tabs = ['quick', 'range', 'pool'], shared = null }) {
+export function openQuickChooser({ title = 'Add a question', confirmLabel = 'Use this question', def = null, onDone, onBrowse = null, browseLabel = 'Browse all questions', tabs = ['quick', 'range', 'pool'], shared = null, note: panelNote = null }) {
   const isPoolDef = def && def.mode === 'pool';
   const choices = isPoolDef ? JSON.parse(JSON.stringify(poolChoices(def))) : [];
   const st = {
@@ -128,6 +128,7 @@ export function openQuickChooser({ title = 'Add a question', confirmLabel = 'Use
   // Preset editor only: a pool can be shared, so several questions draw from it without repeating a topic
   const sharedBox = h('div', { class: 'pc-shared' });
   function drawShared() {
+    if (!shared && panelNote && st.tab === 'pool') { setKids(sharedBox, h('div', { class: 'hint' }, panelNote)); return; }
     if (!shared || st.tab !== 'pool') { setKids(sharedBox); return; }
     const known = shared.pools.find(p => p.id === st.poolId);
     const sel = h('select', { 'aria-label': 'Shared pool', onChange: (e) => {

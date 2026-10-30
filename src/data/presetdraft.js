@@ -1,8 +1,8 @@
 // Building a preset: the preset editor works on a normal prep that carries a `draft` (the shared pools and which preset it came from).
 // The rows you see are samples; the rules behind them (exact question, topic and level, range, pool) are what gets saved.
 import * as P from './prep.js';
-import { poolChoices, poolTopics, upgradePool } from './pools.js';
-import { describe } from './query.js';
+import { poolChoices, poolTopics, upgradePool, newChoice } from './pools.js';
+import { describe, levelOf } from './query.js';
 
 const copy = (x) => JSON.parse(JSON.stringify(x));
 export const isDraft = (prep) => !!(prep && prep.draft);
@@ -18,6 +18,7 @@ export function slotDefOf(s, pools = []) {
       : { mode: 'pool', label: d.label || 'Pool', ...(d.poolId ? { poolId: d.poolId } : {}), choices: copy(poolChoices(d)) };
   } else if (d.mode === 'query') base = copy(d);
   else base = { mode: 'fixed', pick: d.pick || s.pick };
+  if (d.mode === 'pool' && d.link) base.link = d.link;
   delete base.marks; delete base.lines;
   base.marks = s.marks.slice(); base.lines = s.lines.slice();
   return base;
@@ -69,8 +70,51 @@ export function syncPool(prep, poolId) {
 export function setSlotPool(prep, slot, d, opts) {
   if (prep.draft && d.poolId) { upsertPool(prep, d); P.setPool(prep, slot, { ...d }, opts); syncPool(prep, d.poolId); }
   else P.setPool(prep, slot, d, opts);
+  if (slot.def.link) { syncLinked(prep, slot); P.regroup(prep, slot); }
   if (prep.draft) pruneDraftPools(prep);
 }
+
+// ---- linked parts ----
+// A question's parts can be linked: they share one topic decision (say Factorising or Expanding), and each part has its own levels and options within every topic.
+// The topics of linked parts are kept the same: adding or removing a topic on one part does it on the others.
+export function syncLinked(prep, slot) {
+  const group = P.linkGroup(prep, slot); if (group.length < 2) return;
+  const mine = poolChoices(slot.def), topics = new Set(mine.map(c => c.topic));
+  for (const m of group) {
+    if (m === slot) continue;
+    upgradePool(m.def);
+    m.def.choices = m.def.choices.filter(c => topics.has(c.topic));
+    for (const c of mine) if (!m.def.choices.some(x => x.topic === c.topic)) m.def.choices.push(newChoice(c.topic, (c.levels && c.levels[0]) || 'Core'));
+  }
+}
+// make a slot a pool of its own topic (so it can be linked)
+export function toPool(slot) {
+  if (slot.def.mode === 'pool') return upgradePool(slot.def);
+  const e = P.entryOfPick(slot.pick), od = slot.def;
+  slot.def = { mode: 'pool', label: 'Pool', choices: [e ? newChoice(e.topic, levelOf(e)) : { topic: slot.meta.topic, levels: [], off: [], add: [slot.pick] }] };
+  if (od.marks) slot.def.marks = od.marks; if (od.lines) slot.def.lines = od.lines;
+  return slot.def;
+}
+// Link part si with the part above it. Both become pools (if they were not), share one link, and offer the topics of both.
+export function linkWithAbove(prep, q, si) {
+  const a = q.slots[si - 1], b = q.slots[si]; if (!a || !b) return false;
+  toPool(a); toPool(b); delete a.def.poolId; delete b.def.poolId;
+  const id = a.def.link || b.def.link || 'link-' + P.uid();
+  const old = b.def.link;
+  q.slots.forEach(s => { if (s === a || s === b || (old && s.def.link === old) || (a.def.link && s.def.link === a.def.link)) s.def.link = id; });
+  const group = q.slots.filter(s => s.def.link === id), all = new Map();
+  group.forEach(s => poolChoices(s.def).forEach(c => { if (!all.has(c.topic)) all.set(c.topic, (c.levels && c.levels[0]) || 'Core'); }));
+  group.forEach(s => all.forEach((lv, t) => { if (!s.def.choices.some(c => c.topic === t)) s.def.choices.push(newChoice(t, lv)); }));
+  P.regroup(prep, a);
+  return true;
+}
+export function unlinkSlot(prep, slot) {
+  const g = P.linkGroup(prep, slot), id = slot.def.link;
+  delete slot.def.link;
+  if (g.length === 2) g.forEach(s => { delete s.def.link; });
+  return !!id;
+}
+export const linkedWith = (prep, slot) => P.linkGroup(prep, slot).filter(s => s !== slot);
 // Add a question (or several) from a chooser result.
 export function addFromDef(prep, def, count = 1) {
   if (prep.draft && def.mode === 'pool' && def.poolId) upsertPool(prep, def);
@@ -91,6 +135,7 @@ export function addPartFromDef(prep, q, def) {
 // ---- what a row says about its rule ----
 export function ruleText(slot, prep) {
   const d = slot.def;
+  if (d.mode === 'pool' && d.link) { const n = poolTopics(d).length; return `Linked pool · ${n} topic${n === 1 ? '' : 's'}`; }
   if (d.mode === 'pool') {
     const n = poolTopics(d).length, shared = d.poolId && prep && prep.draft && (prep.draft.pools || []).some(p => p.id === d.poolId);
     return shared ? `Shared pool “${d.label}” · ${n} topic${n === 1 ? '' : 's'}` : `Pool · ${n} topic${n === 1 ? '' : 's'}`;

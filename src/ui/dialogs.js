@@ -21,7 +21,9 @@ export function pickName(pick) {
 // A pool's topics, levels and options: the simple picker opened on its Pool tab
 export function openPoolDialog(slot, qi, si) {
   openQuickChooser({ title: `Pool for question ${qi + 1}`, confirmLabel: 'Save pool', def: upgradePool(slot.def), tabs: ['pool'],
-    shared: sharedFor(ctx.prep), onDone: (d) => { setSlotPool(ctx.prep, slot, d); ctx.commit(); } });
+    shared: slot.def.link ? null : sharedFor(ctx.prep),
+    note: slot.def.link ? 'This part is linked with other parts of the question: they share one topic. Topics you add or remove here are added or removed on the linked parts too; the options you tick are for this part only.' : null,
+    onDone: (d) => { setSlotPool(ctx.prep, slot, d); ctx.commit(); } });
 }
 
 // Edit this question's wording / answer for this prep only

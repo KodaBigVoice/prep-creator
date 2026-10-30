@@ -9,7 +9,7 @@ import { newChoice } from '../data/pools.js';
 import { openPoolDialog, openEditDialog, pickName } from './dialogs.js';
 import { typeById } from '../core/engine.js';
 import * as P from '../data/prep.js';
-import { sharedFor, setSlotPool, addFromDef, addPartFromDef, ruleText, poolUsers } from '../data/presetdraft.js';
+import { sharedFor, setSlotPool, addFromDef, addPartFromDef, ruleText, poolUsers, linkWithAbove, unlinkSlot, linkedWith, toPool } from '../data/presetdraft.js';
 const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
 const ICON_UP = '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 2.5h10M8 13.5V6M4.8 8.7 8 5.5l3.2 3.2"/></svg>';
@@ -101,7 +101,7 @@ export function renderBuilder(root) {
         h('div', { class: 'c end' }, p.calc ? h('span', { class: 'calcico', title: 'Calculator question', 'aria-label': 'Calculator question', html: ICON_CALC }) : null,
           firstOfSlot ? [
             slot.def.mode === 'query' || slot.def.mode === 'pool' || (slot.def.pick && slot.def.pick.endsWith(':*'))
-              ? h('button', { class: 'iconbtn', title: slot.locked ? 'Locked' : slot.def.mode === 'pool' ? `A different question from the pool: ${poolInfo(slot).text}` : slot.def.mode === 'query' ? `A different question: ${describe(slot.def)}` : 'A different option of this kind of question', 'aria-label': 'Different question', disabled: slot.locked, html: ICON_SHUFFLE, onClick: () => { P.rerollSlot(prep, slot); ctx.commit(); } }) : null,
+              ? h('button', { class: 'iconbtn', title: slot.locked ? 'Locked' : slot.def.mode === 'pool' && slot.def.link ? 'A different topic for these linked parts (they change together)' : slot.def.mode === 'pool' ? `A different question from the pool: ${poolInfo(slot).text}` : slot.def.mode === 'query' ? `A different question: ${describe(slot.def)}` : 'A different option of this kind of question', 'aria-label': 'Different question', disabled: slot.locked, html: ICON_SHUFFLE, onClick: () => { P.rerollSlot(prep, slot); ctx.commit(); } }) : null,
             h('button', { class: 'iconbtn', title: slot.locked ? 'Locked' : 'New numbers (same question)', 'aria-label': 'New numbers', disabled: slot.locked, onClick: () => { P.renumber(prep, slot); ctx.commit(); } }, '↻')] : null));
       card.append(row);
       if (isRowSel) card.append(detailPanel(q, qi, slot, p.si, cq, p));
@@ -148,6 +148,9 @@ function detailPanel(q, qi, slot, si, cq, part) {
   const isQuery = slot.def.mode === 'query';
   const [pickTopic, pickRest] = pickParts(anyOpt ? slot.def.pick : slot.pick, anyOpt);
   const canRemove = cq.parts.length > 1 || prep.questions.length > 0;
+  const partLabel = (sl) => { const x = cq.parts.find(pp => pp.si === q.slots.indexOf(sl)); return x && x.l ? `(${x.l})` : `part ${q.slots.indexOf(sl) + 1}`; };
+  const mates = slot.def.link ? linkedWith(prep, slot) : [];
+  const linkedNote = mates.length ? h('div', { class: 'hint linknote' }, `Linked with ${mates.map(partLabel).join(' and ')}: the linked parts always share a topic, and ⤮ changes it for all of them. Each part keeps its own options.`) : null;
   return h('div', { class: 'detail' },
     h('div', { class: 'dside' },
       h('button', { class: 'iconbtn boxed' + (slot.locked ? ' on' : ''), title: slot.locked ? 'Locked: re-roll will not change this. Click to unlock' : 'Lock: stop re-roll changing this question', html: slot.locked ? ICON_LOCK : ICON_UNLOCK, onClick: () => { slot.locked = !slot.locked; ctx.commit(); } }),
@@ -155,6 +158,7 @@ function detailPanel(q, qi, slot, si, cq, part) {
     h('div', { class: 'dpath' }, h('b', {}, pickTopic), isQuery ? h('span', { class: 'tag lvtag', title: isRange(slot.def) ? 'A range of the difficulty ladder: ⤮ draws another question from it' : `${slot.def.level} level: ⤮ draws another question from this topic at this level` }, isRange(slot.def) ? 'range' : slot.def.level) : null, pickRest ? h('span', { class: 'dpath-rest' }, ' › ' + pickRest) : null, slot.meta && slot.meta.multipart ? h('span', { class: 'tag' }, 'multipart') : null, slot.locked ? h('span', { class: 'tag lock' }, 'locked') : null),
     anyOpt ? h('div', { class: 'hint' }, `A different option comes up each time you re-roll. This one is: ${slot.meta.label}.`) : null,
     range ? h('div', { class: 'hint' }, range) : null,
+    linkedNote,
     h('div', { class: 'dbtns' },
       h('div', { class: 'abar' },
         abtn(ICON_EASIER, 'Easier', () => nudge(slot, -1), 'An easier question on the same topic', !P.canNudge(slot, -1)),
@@ -166,7 +170,9 @@ function detailPanel(q, qi, slot, si, cq, part) {
         { label: '+ Add a part', onClick: () => addPart(qi) },
         q.slots.length > 1 ? { label: 'Make this its own question', sub: 'Take it out of the multipart question', onClick: () => { const nq = P.splitSlot(prep, qi, si); ctx.ui.sel = nq === null ? null : { q: nq, k: 0 }; ctx.commit(); } } : null,
         { sep: true },
-        isPool ? null : { label: 'Make this a pool…', sub: 'Re-roll picks from several questions you choose', onClick: () => { const e = P.entryOfPick(slot.pick); slot.def = { mode: 'pool', label: 'Pool', choices: [e ? newChoice(e.topic, levelOf(e)) : { topic: slot.meta.topic, levels: [], off: [], add: [slot.pick] }] }; ctx.commit(); openPoolDialog(slot, qi, si); } },
+        prep.draft && si > 0 && !(slot.def.link && q.slots[si - 1].def.link === slot.def.link) ? { label: 'Link with the part above', sub: 'One topic decision for both; each part keeps its own options', onClick: () => { linkWithAbove(prep, q, si); ctx.commit(); toast('Linked. Open each part’s pool (the pool icon) to choose the topics and the options for that part.', 6000); } } : null,
+        slot.def.link ? { label: 'Unlink this part', sub: 'It chooses its own topic again', onClick: () => { unlinkSlot(prep, slot); ctx.commit(); } } : null,
+        isPool ? null : { label: 'Make this a pool…', sub: 'Re-roll picks from several questions you choose', onClick: () => { toPool(slot); ctx.commit(); openPoolDialog(slot, qi, si); } },
         isPool ? { label: 'Stop being a pool', sub: 'Re-roll keeps this kind of question', onClick: () => { slot.def = { mode: 'fixed', pick: slot.pick }; ctx.commit(); } } : null,
         anyOpt ? { label: 'Keep this option', sub: 'Stop changing option when you re-roll', onClick: () => { slot.def = { mode: 'fixed', pick: slot.pick }; ctx.commit(); } } : null,
         { sep: true },

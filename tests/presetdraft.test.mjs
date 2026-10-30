@@ -1,7 +1,7 @@
 // The preset editor: shared pools, saving a draft as a preset, and loading it back.
-import { prepFromPreset, newPrep, addQuestionDef } from '../src/data/prep.js';
-import { newChoice, poolTopics } from '../src/data/pools.js';
-import { presetFromPrep, syncPool, upsertPool, addFromDef, setSlotPool, pruneDraftPools, poolUsers, ruleText, sharedFor } from '../src/data/presetdraft.js';
+import { prepFromPreset, newPrep, addQuestionDef, addSlotDef, rerollSlot, nudgeSlot, linkGroup, renumber } from '../src/data/prep.js';
+import { newChoice, poolTopics, choiceOptions } from '../src/data/pools.js';
+import { linkWithAbove, unlinkSlot, syncLinked, presetFromPrep, syncPool, upsertPool, addFromDef, setSlotPool, pruneDraftPools, poolUsers, ruleText, sharedFor } from '../src/data/presetdraft.js';
 import { STARTER_PRESETS } from '../src/data/presets.js';
 let bad = 0;
 const ok = (c, m) => { if (!c) { bad++; console.log('FAIL', m); } };
@@ -73,4 +73,53 @@ const copy = presetFromPrep(sp, { name: 'Copy' });
 ok(copy.questions.length === starter.questions.length && copy.questions.every((q, i) => q.length === starter.questions[i].length), 'a copy of the starter has the same shape');
 ok(prepFromPreset(copy, copy.set, 'x').questions.length === starter.questions.length, 'the copy loads');
 
+// ---- linked parts: Factorising or Expanding for (a) and (b), each part with its own options ----
+import { ladder } from '../src/data/query.js';
+const L = (t) => ladder([t]);
+const fac = L('Factorising'), exp = L('Expanding brackets');
+const half = (arr, k) => arr.filter((_, i) => (i % 2) === k).map(e => e.key);
+const ch = (topic, keys) => ({ topic, levels: [], off: [], add: keys });
+const link = (a, b) => ({
+  id: 'lk', set: 'Y7 Additional', name: 'Linked', minutes: 30,
+  questions: [[{ mode: 'pool', link: 'g1', label: 'A', choices: [ch('Factorising', half(fac, 0)), ch('Expanding brackets', half(exp, 0))] },
+               { mode: 'pool', link: 'g1', label: 'B', choices: [ch('Factorising', half(fac, 1)), ch('Expanding brackets', half(exp, 1))] },
+               { mode: 'pool', link: 'g2', label: 'C', choices: [ch('Fractions', L('Fractions').slice(0, 4).map(e => e.key))] },
+               { mode: 'pool', link: 'g2', label: 'D', choices: [ch('Fractions', L('Fractions').slice(4, 8).map(e => e.key))] }]],
+});
+const seen = new Set();
+for (let i = 0; i < 60; i++) {
+  const p = prepFromPreset(link(), 'Y7 Additional', 'x'), [a, b, c, d] = p.questions[0].slots;
+  ok(a.meta.topic === b.meta.topic, `linked parts share a topic (${a.meta.topic} / ${b.meta.topic})`);
+  ok(c.meta.topic === d.meta.topic && c.meta.topic === 'Fractions', 'second linked group is its own decision');
+  const A = new Set(half(a.meta.topic === 'Factorising' ? fac : exp, 0)), B = new Set(half(a.meta.topic === 'Factorising' ? fac : exp, 1));
+  ok(A.has(a.pick) && B.has(b.pick), 'each part draws from its own options');
+  seen.add(a.meta.topic);
+  // a shuffle moves the pair to the other topic, together
+  const before = a.meta.topic; rerollSlot(p, b);
+  ok(a.meta.topic === b.meta.topic && a.meta.topic !== before, 'shuffle moves linked parts together to a different topic');
+  ok(linkGroup(p, a).length === 2 && linkGroup(p, c).length === 2, 'link groups');
+  const t = a.meta.topic; if (nudgeSlot(p, a, 1)) ok(a.meta.topic === t, 'nudging a linked part stays in the topic');
+  const pick = b.pick; renumber(p, b); ok(b.pick === pick, 'new numbers keep the question');
+  const s = presetFromPrep(p, { name: 'x' });
+  ok(s.questions[0][0].link === 'g1' && s.questions[0][1].link === 'g1', 'the link is saved');
+}
+ok(seen.size === 2, 'both topics come up');
+// locked: a group with a locked part does not move
+{ const p = prepFromPreset(link(), 'Y7 Additional', 'x'), [a, b] = p.questions[0].slots; a.locked = true; const pk = [a.pick, b.pick]; rerollSlot(p, b); ok(a.pick === pk[0] && b.pick === pk[1], 'locked linked group stays'); }
+// linking and unlinking in the editor
+{
+  const p = newPrep({ set: 'Y7 Additional', name: 'x', minutes: 30 }); p.draft = { presetId: null, pools: [] };
+  addQuestionDef(p, { mode: 'fixed', pick: fac[0].key }); const q = p.questions[0];
+  {
+    addSlotDef(p, q, { mode: 'fixed', pick: exp[0].key });
+    ok(linkWithAbove(p, q, 1), 'link made');
+    ok(q.slots.every(s => s.def.mode === 'pool' && s.def.link), 'both parts are linked pools');
+    ok(q.slots.every(s => poolTopics(s.def).length === 2), 'both parts offer both topics');
+    ok(q.slots[0].meta.topic === q.slots[1].meta.topic, 'and sit on one topic');
+    // dropping a topic on one part drops it on the other
+    q.slots[0].def.choices = q.slots[0].def.choices.filter(c => c.topic === 'Expanding brackets'); syncLinked(p, q.slots[0]);
+    ok(q.slots[1].def.choices.length === 1 && q.slots[1].def.choices[0].topic === 'Expanding brackets', 'topics stay in step');
+    unlinkSlot(p, q.slots[1]); ok(!q.slots[0].def.link && !q.slots[1].def.link, 'unlinking a pair frees both');
+  }
+}
 if (bad) { console.log(bad, 'failures'); process.exit(1); } else console.log('presetdraft tests passed');

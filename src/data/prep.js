@@ -90,7 +90,13 @@ function chooseFromPool(d, rng, usedKeys, current, usedTopicSet = new Set(), opt
     if (!all.size) throw new Error('This pool has no questions in it.');
     by.clear(); all.forEach((v, k) => by.set(k, v));
   }
-  const topic = chooseTopic([...by.keys()], rng, usedTopicSet, opts);
+  // linked parts: opts.force is the topic the group already has; opts.only are the topics every part of the group can offer
+  let keys = [...by.keys()], topic;
+  if (opts.force && by.has(opts.force)) topic = opts.force;
+  else {
+    if (opts.only && opts.only.length) { const k = keys.filter(t => opts.only.includes(t)); if (k.length) keys = k; }
+    topic = chooseTopic(keys, rng, usedTopicSet, opts);
+  }
   const list = by.get(topic);
   let c = list.filter(e => !usedKeys.has(e.key) && e.key !== current);
   if (!c.length) c = list.filter(e => e.key !== current);
@@ -127,18 +133,40 @@ export function resolveDef(preset, d) {
   if (!pool) return d;
   return { ...d, label: pool.name, choices: JSON.parse(JSON.stringify(pool.choices)) };
 }
+// Linked parts: pool parts of one question that share a `link` make one topic decision between them. The topics every part can offer:
+export function commonTopics(defs) {
+  const lists = defs.map(d => [...poolByTopic(d).keys()]);
+  if (!lists.length) return [];
+  const both = lists[0].filter(t => lists.every(l => l.includes(t)));
+  return both.length ? both : lists[0];
+}
+export function linkGroup(prep, slot) {
+  const l = slot.def && slot.def.link; if (!l || slot.def.mode !== 'pool') return [slot];
+  const q = prep.questions.find(x => x.slots.includes(slot)); if (!q) return [slot];
+  const g = q.slots.filter(x => x.def.link === l && x.def.mode === 'pool');
+  return g.includes(slot) && g.length > 1 ? g : [slot];
+}
 export function prepFromPreset(preset, setId, name, rng = makeRng(newSeed())) {
   const set = setById[setId];
   const used = new Set(), keys = new Set(), avoid = newAvoid(), taken = new Map();       // taken: poolId -> topics already drawn from that shared pool
-  const questions = preset.questions.map((defs) => ({
-    id: uid(),
-    slots: defs.map((d0) => {
-      const d = resolveDef(preset, d0), mates = d.poolId ? (taken.get(d.poolId) || taken.set(d.poolId, new Set()).get(d.poolId)) : new Set();
-      const s = makeSlot(d, used, rng, keys, avoid, { mates });
-      used.add(s.meta.topic); keys.add(s.pick); addScene(avoid, s); if (d.poolId) mates.add(s.meta.topic);
-      return s;
-    }),
-  }));
+  const questions = preset.questions.map((defs) => {
+    const gt = new Map();                                                              // link -> the topic drawn for those linked parts
+    return {
+      id: uid(),
+      slots: defs.map((d0) => {
+        const d = resolveDef(preset, d0), mates = d.poolId ? (taken.get(d.poolId) || taken.set(d.poolId, new Set()).get(d.poolId)) : new Set();
+        const opts = { mates };
+        if (d.link && d.mode === 'pool') {
+          if (gt.has(d.link)) opts.force = gt.get(d.link);
+          else opts.only = commonTopics(defs.filter(x => x.link === d.link && x.mode === 'pool').map(x => resolveDef(preset, x)));
+        }
+        const s = makeSlot(d, used, rng, keys, avoid, opts);
+        if (d.link && d.mode === 'pool' && !gt.has(d.link)) gt.set(d.link, s.meta.topic);
+        used.add(s.meta.topic); keys.add(s.pick); addScene(avoid, s); if (d.poolId) mates.add(s.meta.topic);
+        return s;
+      }),
+    };
+  });
   return newPrep({ set: setId, name, minutes: preset.minutes ?? set.minutes, presetId: preset.id, rubricText: preset.rubricText, questions });
 }
 export function newPrep({ set, name, minutes, presetId = null, rubricText, questions = [] }) {
@@ -159,8 +187,31 @@ export function matesOf(prep, slot) {
 }
 // ⤮ a different question. Pools and multi-topic questions move to a different topic when there is one.
 
+// Linked parts move together: one new topic for all of them, then each part draws from its own options in that topic.
+function drawGroup(prep, group, leaveTopic) {
+  const ids = new Set(group.map(g => g.id));
+  const other = (f) => { const set = new Set(); prep.questions.forEach(q => q.slots.forEach(sl => { if (!ids.has(sl.id)) f(sl, set); })); return set; };
+  const usedT = other((sl, set) => { if (sl.meta) set.add(sl.meta.topic); }), usedK = other((sl, set) => { if (sl.pick) set.add(sl.pick); });
+  const rng = makeRng(newSeed());
+  const only = commonTopics(group.map(g => g.def));
+  const topic = chooseTopic(only, rng, usedT, { leaveTopic });
+  for (const m of group) {
+    m.edits = null;
+    const roll = () => { m.seed = newSeed(); choosePick(m, usedT, rng, usedK, { force: topic }); };
+    roll(); freshen(m, avoidFor(prep, m.id), roll); fillSnapshot(m); usedK.add(m.pick);
+  }
+}
+// after a pool of a linked part was edited: keep the group on one topic that all parts can still offer
+export function regroup(prep, slot) {
+  const g = linkGroup(prep, slot); if (g.length < 2) return;
+  const t = slot.meta && slot.meta.topic;
+  const fits = g.every(m => m.meta && m.meta.topic === t && (poolByTopic(m.def).get(t) || []).some(e => e.key === m.pick));
+  if (!fits && !g.some(m => m.locked)) drawGroup(prep, g, undefined);
+}
 export function rerollSlot(prep, slot) {
   if (slot.locked) return slot;
+  const group = linkGroup(prep, slot);
+  if (group.length > 1) { if (!group.some(m => m.locked)) drawGroup(prep, group, slot.meta && slot.meta.topic); return slot; }
   slot.edits = null;
   const from = slot.meta && slot.meta.topic, mates = matesOf(prep, slot);
   const roll = () => {
@@ -224,6 +275,7 @@ export function setPool(prep, slot, def, { redraw = false } = {}) {
   slot.def = { mode: 'pool', ...def }; upgradePool(slot.def);
   if (od && od.marks && !slot.def.marks) slot.def.marks = od.marks;
   if (od && od.lines && !slot.def.lines) slot.def.lines = od.lines;
+  if (od && od.link && !slot.def.link) slot.def.link = od.link;
   const fits = [...poolByTopic(slot.def).values()].some(l => l.some(e => e.key === old));
   if (!redraw && fits) return slot;
   slot.edits = null; slot.marksManual = []; slot.linesManual = []; slot.flags = null;

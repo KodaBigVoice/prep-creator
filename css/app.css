@@ -345,3 +345,4 @@ body.resizing{cursor:col-resize;user-select:none}
 .draftbar .dtext b{display:block;margin-bottom:2px}
 .pc-shared .fl{display:flex;align-items:center;gap:10px}
 .pc-shared .fl select,.pc-shared .fl input[type=text]{flex:1;min-width:0}
+.linknote{margin:4px 0 6px;color:var(--accent)}
