@@ -12,6 +12,7 @@ import { buildLayout, buildAnswerPages, DEFAULT_LAYOUT, FLOORS } from '../layout
 import { renderBuilder } from './builder.js';
 import { openHistory, openSavePreset } from './dialogs.js';
 import { totalMarks } from '../layout/compose.js';
+import { presetFromPrep } from '../data/presetdraft.js';
 
 const store = loadStore();
 ctx.store = store;
@@ -37,7 +38,9 @@ function finishNew(prep) {
 
 // ---------- saving ----------
 function savePrep(quiet = false) {
-  const prep = ctx.prep; prep.saved = new Date().toISOString();
+  const prep = ctx.prep;
+  if (prep.draft) { if (!quiet) toast('This is a preset in progress. Use Save preset to keep it.'); return; }      // a preset being built is not a prep
+  prep.saved = new Date().toISOString();
   const i = store.preps.findIndex(p => p.id === prep.id);
   const copy = JSON.parse(JSON.stringify(prep));
   if (i >= 0) store.preps[i] = copy; else store.preps.push(copy);
@@ -87,10 +90,11 @@ function saveMenu(anchor) {
 // Ask before anything that swaps the prep on screen for a different one
 async function confirmReplace(title, message, label) {
   const prep = ctx.prep;
+  if (prep && prep.draft) return confirmBox({ title: 'Leave the preset editor?', message: [message, 'The preset you are building is not saved: any changes to it are lost.'], confirmLabel: label });
   if (!prep || !prep.questions.length) return true;
   return confirmBox({ title, message: [message, `“${prep.name}” is saved to History first, so you can open it again from there.`], confirmLabel: label });
 }
-function autosavePrevious() { if (ctx.prep && ctx.dirty && ctx.prep.questions.length) savePrep(true); }
+function autosavePrevious() { if (ctx.prep && !ctx.prep.draft && ctx.dirty && ctx.prep.questions.length) savePrep(true); }
 
 // ---------- starting a prep ----------
 function useSet(setId, presetId = undefined) {
@@ -106,6 +110,49 @@ function useSet(setId, presetId = undefined) {
 }
 function randomFor(setId) { autosavePrevious(); ctx.prep = finishNew(P.randomPrep(setId, 'x')); ctx.dirty = false; afterLoad(); }
 function blankFor(setId) { autosavePrevious(); ctx.prep = finishNew(P.newPrep({ set: setId, name: 'x', minutes: setById[setId].minutes })); ctx.prep.presetId = null; ctx.dirty = false; afterLoad(); }
+// ---------- the preset editor ----------
+// A preset is built on a prep that carries a `draft`. The prep that was on screen waits in ctx.stash so Cancel can bring it back.
+function startDraft(presetId, { copy = false } = {}) {
+  const prep0 = ctx.prep, setId = prep0.set;
+  autosavePrevious();
+  const stash = prep0.draft ? ctx.stash : prep0;
+  const src = presetId ? findPreset(presetId) : null;
+  let prep;
+  if (src) {
+    prep = P.prepFromPreset(withTicks(src), setId, 'x');
+    prep.name = copy || src.starter ? `${src.name.replace(/ \(starter recipe\)$/, '')} (my copy)` : src.name;
+    prep.draft = { presetId: copy || src.starter ? null : src.id, pools: JSON.parse(JSON.stringify(src.pools || [])) };
+    prep.rubricText = src.rubricText || prep.rubricText;
+  } else {
+    prep = P.newPrep({ set: setId, name: '', minutes: setById[setId].minutes });
+    prep.rubricText = store.settings.rubrics[setId] || defaultRubric(prep.minutes);
+    prep.draft = { presetId: null, pools: [] };
+  }
+  prep.nameAuto = false; prep.presetId = null;
+  ctx.stash = stash; ctx.prep = prep; ctx.ui.sidebar = true; store.settings.sidebar = true; applyWidths();
+  ctx.dirty = false; afterLoad();
+}
+async function saveDraft() {
+  const prep = ctx.prep; if (!prep.draft) return;
+  const name = (prep.name || '').trim();
+  if (!name) { toast('Give the preset a name first (top left).', 4000); const nb = toolbar.querySelector('.namebox'); if (nb) nb.focus(); return; }
+  if (!prep.questions.length) { toast('Add at least one question first.', 4000); return; }
+  const old = prep.draft.presetId ? store.presets.find(p => p.id === prep.draft.presetId) : null;
+  const clash = store.presets.find(p => p.set === prep.set && p.name.trim().toLowerCase() === name.toLowerCase() && (!old || p.id !== old.id));
+  if (clash && !(await confirmBox({ title: 'Replace the preset with this name?', message: `You already have a preset called “${clash.name}” for ${prep.set}. Saving replaces it.`, confirmLabel: 'Replace it' }))) return;
+  const preset = presetFromPrep(prep, { id: old ? old.id : clash ? clash.id : undefined, name, created: old ? old.created : clash ? clash.created : undefined });
+  store.presets = store.presets.filter(p => p.id !== preset.id); store.presets.push(preset);
+  ctx.dirty = false; ctx.stash = null; ctx.save();
+  useSet(prep.set, preset.id);
+  toast(`Saved the preset “${preset.name}”. Here is a new prep made from it.`, 5000);
+}
+async function cancelDraft() {
+  const prep = ctx.prep; if (!prep.draft) return;
+  if (ctx.dirty && !(await confirmBox({ title: 'Discard this preset?', message: 'The changes you made to this preset are lost.', confirmLabel: 'Discard changes', danger: true }))) return;
+  const back = ctx.stash; ctx.stash = null; ctx.dirty = false;
+  if (back && back.questions && setById[back.set]) { ctx.prep = back; ctx.dirty = false; afterLoad(); } else useSet(prep.set);
+}
+ctx.hooks.saveDraft = saveDraft; ctx.hooks.cancelDraft = cancelDraft;
 function afterLoad() { ctx.ui.sel = null; ctx.store.current = ctx.prep; ctx.resetHistory(); ctx.commit({ toolbar: true }); ctx.dirty = false; ctx.hooks.status(); ctx.save(); }
 ctx.ui.afterLoad = () => { ctx.ui.sel = null; ctx.resetHistory(); ctx.commit({ toolbar: true }); ctx.dirty = false; ctx.hooks.status(); };
 
@@ -126,12 +173,12 @@ document.addEventListener('keydown', (e) => {
   if (k === 'z' && !e.shiftKey) { e.preventDefault(); ctx.undo(); }
   else if (k === 'y' || (k === 'z' && e.shiftKey)) { e.preventDefault(); ctx.redo(); }
 });
-ctx.hooks.status = () => { syncUndo(); saveStat.textContent = ctx.dirty ? 'Unsaved changes' : (SAVED_TEXT[ctx.ui.savedTo] || SAVED_TEXT.browser); saveStat.classList.toggle('dirty', !!ctx.dirty); };
+ctx.hooks.status = () => { syncUndo(); saveStat.textContent = ctx.prep && ctx.prep.draft ? (ctx.dirty ? 'Preset not saved yet' : 'Editing a preset') : ctx.dirty ? 'Unsaved changes' : (SAVED_TEXT[ctx.ui.savedTo] || SAVED_TEXT.browser); saveStat.classList.toggle('dirty', !!ctx.dirty); };
 const ICON_PENCIL = '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M2.8 13.2l.6-2.9 7.2-7.2a1.4 1.4 0 0 1 2 0l.3.3a1.4 1.4 0 0 1 0 2l-7.2 7.2-2.9.6zM9.6 4.1l2.3 2.3"/></svg>';
 const ICON_DOWNLOAD = '<svg width="17" height="17" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2.2v8.2M4.6 7.2 8 10.6l3.4-3.4M2.8 13.4h10.4"/></svg>';
 function renderToolbar() {
   const prep = ctx.prep;
-  const nameIn = h('input', { type: 'text', class: 'namebox', value: prep.name, placeholder: 'Name this prep', 'aria-label': 'Prep name', onInput: (e) => { prep.name = e.target.value; prep.nameAuto = false; ctx.commit({ builder: false }); } });
+  const nameIn = h('input', { type: 'text', class: 'namebox', value: prep.name, placeholder: prep.draft ? 'Name this preset' : 'Name this prep', 'aria-label': prep.draft ? 'Preset name' : 'Prep name', onInput: (e) => { prep.name = e.target.value; prep.nameAuto = false; ctx.commit({ builder: false }); } });
   const seg = (items) => h('div', { class: 'seg', role: 'radiogroup', 'aria-label': 'Print style' }, items.map(([val, label]) => h('button', { role: 'radio', 'aria-checked': ctx.layout.mode === val, onClick: () => { ctx.layout.mode = val; ctx.commit({ toolbar: true, dirty: false }); } }, label)));
   setKids(toolbar,
     h('button', { class: 'iconbtn hamburger', 'aria-label': 'Options', 'aria-pressed': !!ctx.ui.sidebar, title: ctx.ui.sidebar ? 'Hide the options panel' : 'Show the options panel', onClick: toggleSidebar },
@@ -141,7 +188,8 @@ function renderToolbar() {
     h('span', { class: 'sp' }),
     saveStat,
     h('span', { class: 'undoredo' }, undoBtn, redoBtn),
-    h('span', { class: 'splitbtn' },
+    prep.draft ? h('button', { class: 'btn primary', title: 'Keep this preset', onClick: () => saveDraft() }, 'Save preset')
+    : h('span', { class: 'splitbtn' },
       h('button', { class: 'btn', onClick: () => doSave(), title: saveMode() === 'file' ? 'Save to the JSON file (and in this browser)' : 'Save in this browser' }, 'Save'),
       h('button', { class: 'btn arrow', 'aria-label': 'Save options', onClick: (e) => saveMenu(e.currentTarget) }, '▾')),
     h('span', { class: 'divider' }),
@@ -233,6 +281,12 @@ function renderSidebar() {
 }
 function tabPresets(el) {
   const prep = ctx.prep;
+  if (prep.draft) {
+    setKids(el,
+      h('div', { class: 'draftnote' }, h('b', {}, prep.draft.presetId ? 'Editing a preset' : 'Building a new preset'), h('div', { class: 'hint' }, 'Add, change and reorder questions in the middle column as usual. Each row shows its rule underneath. Name the preset at the top left, then press Save preset.')),
+      h('div', { class: 'stack' }, h('button', { class: 'btn', onClick: cancelDraft }, 'Cancel and go back')));
+    return;
+  }
   const presets = presetsFor(prep.set);
   const setSel = h('select', { 'aria-label': 'Set', onChange: async (e) => {
     const v = e.target.value;
@@ -245,6 +299,7 @@ function tabPresets(el) {
   } },
     h('option', { value: '' }, presets.length ? 'Choose a preset…' : 'No preset for this set yet'),
     presets.map(p => h('option', { value: p.id, selected: p.id === prep.presetId }, p.name + (p.starter ? '' : ' ★'))));
+  const cur = findPreset(prep.presetId), mine = cur && !cur.starter ? cur : null;
   setKids(el,
     h('label', { class: 'fl' }, 'Set', setSel),
     h('label', { class: 'fl' }, 'Preset', presetSel),
@@ -252,7 +307,12 @@ function tabPresets(el) {
     h('div', { class: 'stack' },
       h('button', { class: 'btn', onClick: async () => { if (await confirmReplace('Start again from this preset?', `This replaces “${prep.name}” on screen with a fresh prep from the preset.`, 'Start again')) useSet(prep.set, prep.presetId || undefined); } }, 'Start again from this preset')),
     h('hr'),
+    h('div', { class: 'sec' }, 'Build a preset'),
+    h('div', { class: 'hint' }, 'A preset is a recipe: for each question, an exact question, a topic and level, a range or a pool of topics. Each new prep made from it is different.'),
     h('div', { class: 'stack' },
+      h('button', { class: 'btn', onClick: () => startDraft(null) }, 'New preset…'),
+      mine ? h('button', { class: 'btn', onClick: () => startDraft(mine.id) }, `Edit “${mine.name}”`) : null,
+      cur ? h('button', { class: 'btn', onClick: () => startDraft(cur.id, { copy: true }) }, `Make my own copy of “${cur.name.replace(/ \(starter recipe\)$/, '')}”…`) : null,
       h('button', { class: 'btn', onClick: openSavePreset }, 'Save this prep as a preset…')));
 }
 function tabRubric(el) {

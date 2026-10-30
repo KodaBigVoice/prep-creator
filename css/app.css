@@ -330,3 +330,18 @@ body.resizing{cursor:col-resize;user-select:none}
 .pc-opt{display:grid;grid-template-columns:20px 1fr auto;align-items:center;gap:6px;padding:4px 2px;border-bottom:1px solid var(--line2);font-size:13px;cursor:pointer}
 .pc-opt small{color:var(--muted);font-size:11px}
 .pc-opt:hover{background:#f4f7fc}
+
+/* preset editor */
+.draftbar{display:flex;align-items:center;gap:12px;margin-bottom:10px;padding:10px 12px;border:1px solid #c9d6f7;background:var(--accent-soft);border-radius:var(--radius)}
+.draftbar .dtext{flex:1;font-size:12.5px;color:var(--ink)}
+.draftbar .dtext b{color:var(--accent);font-size:13px}
+.draftbar .dbtn{display:flex;gap:6px;flex:0 0 auto}
+.rulechip{display:inline-block;margin-top:5px;padding:1px 8px;border-radius:999px;border:1px solid #c9d6f7;background:#f3f6fe;color:var(--accent);font-size:11.5px;font-weight:600;line-height:1.5}
+.draftnote{margin-bottom:10px}
+.pc-shared{margin:2px 0 10px;padding:10px 12px;border:1px solid var(--line);border-radius:var(--radius);background:#fafbfc;display:grid;gap:8px}
+.pc-shared .fl{margin:0}
+.pc-shared .hint{margin:0}
+.pc-shared .cnt input{width:70px}
+.draftbar .dtext b{display:block;margin-bottom:2px}
+.pc-shared .fl{display:flex;align-items:center;gap:10px}
+.pc-shared .fl select,.pc-shared .fl input[type=text]{flex:1;min-width:0}

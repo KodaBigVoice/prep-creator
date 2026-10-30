@@ -6,6 +6,7 @@ import { upgradePool } from '../data/pools.js';
 import { mathToHTML } from '../layout/render.js';
 import { typeById, entries } from '../core/engine.js';
 import * as P from '../data/prep.js';
+import { presetFromPrep, sharedFor, setSlotPool } from '../data/presetdraft.js';
 import { STARTER_PRESETS } from '../data/presets.js';
 import { exportText, importText } from '../data/store.js';
 import { SETS, setById } from '../data/sets.js';
@@ -20,7 +21,7 @@ export function pickName(pick) {
 // A pool's topics, levels and options: the simple picker opened on its Pool tab
 export function openPoolDialog(slot, qi, si) {
   openQuickChooser({ title: `Pool for question ${qi + 1}`, confirmLabel: 'Save pool', def: upgradePool(slot.def), tabs: ['pool'],
-    onDone: (d) => { P.setPool(ctx.prep, slot, d); ctx.commit(); } });
+    shared: sharedFor(ctx.prep), onDone: (d) => { setSlotPool(ctx.prep, slot, d); ctx.commit(); } });
 }
 
 // Edit this question's wording / answer for this prep only
@@ -86,8 +87,9 @@ export function openHistory() {
           h('tbody', {}, rows.map(p => h('tr', {}, h('td', {}, p.name), h('td', {}, p.set), h('td', {}, (p.saved || '').slice(0, 10)),
             h('td', { style: { textAlign: 'right', whiteSpace: 'nowrap' } },
               h('button', { class: 'btn small', onClick: async () => {
-                if (ctx.prep.questions.length && ctx.prep.id !== p.id && !(await confirmBox({ title: 'Open this prep?', message: [`This replaces “${ctx.prep.name}” on screen with “${p.name}”.`, 'Your current prep is saved to History first.'], confirmLabel: 'Open' }))) return;
-                if (ctx.prep.id !== p.id && ctx.dirty) { const cur = JSON.parse(JSON.stringify(ctx.prep)); cur.saved = new Date().toISOString(); const i = st.preps.findIndex(x => x.id === cur.id); if (i >= 0) st.preps[i] = cur; else if (cur.questions.length) st.preps.push(cur); }
+                if (ctx.prep.draft) { if (!(await confirmBox({ title: 'Leave the preset editor?', message: [`This closes the preset “${ctx.prep.name || 'unnamed'}” without saving it, and opens “${p.name}”.`], confirmLabel: 'Open' }))) return; ctx.prep.draft = null; ctx.dirty = false; }
+                else if (ctx.prep.questions.length && ctx.prep.id !== p.id && !(await confirmBox({ title: 'Open this prep?', message: [`This replaces “${ctx.prep.name}” on screen with “${p.name}”.`, 'Your current prep is saved to History first.'], confirmLabel: 'Open' }))) return;
+                if (ctx.prep.id !== p.id && ctx.dirty && !ctx.prep.draft) { const cur = JSON.parse(JSON.stringify(ctx.prep)); cur.saved = new Date().toISOString(); const i = st.preps.findIndex(x => x.id === cur.id); if (i >= 0) st.preps[i] = cur; else if (cur.questions.length) st.preps.push(cur); }
                 ctx.prep = JSON.parse(JSON.stringify(p)); ctx.ui.afterLoad && ctx.ui.afterLoad(); m.close(); } }, 'Open'), ' ',
               h('button', { class: 'btn small danger', onClick: async () => { if (!(await confirmBox({ title: 'Delete this saved prep?', message: `“${p.name}” will be removed from History. This cannot be undone.`, confirmLabel: 'Delete', danger: true }))) return; st.preps = st.preps.filter(x => x.id !== p.id); ctx.save(); draw(); } }, 'Delete')))))) : h('div', { class: 'empty' }, 'Nothing saved for this set yet. Preps are saved when you press Save or print.'));
     } else {
@@ -109,12 +111,7 @@ export function openSavePreset() {
     h('div', { class: 'kv' }, h('label', {}, 'Name'), name)),
   footer: [h('button', { class: 'btn', onClick: () => m.close() }, 'Cancel'), h('button', { class: 'btn primary', onClick: () => {
     const nm = name.value.trim(); if (!nm) return;
-    const slotDef = (s) => {
-      const base = s.def.mode === 'pool' ? JSON.parse(JSON.stringify({ mode: 'pool', label: s.def.label, poolId: s.def.poolId, ...(s.def.choices ? { choices: s.def.choices } : { candidates: s.def.candidates }) })) : s.def.mode === 'query' ? JSON.parse(JSON.stringify(s.def)) : { mode: 'fixed', pick: s.def.pick || s.pick };
-      base.marks = s.marks.slice(); base.lines = s.lines.slice();
-      return base;
-    };
-    const preset = { id: 'user-' + P.uid(), set: prep.set, name: nm, minutes: prep.minutes, rubricText: prep.rubricText, questions: prep.questions.map(q => q.slots.map(slotDef)), created: new Date().toISOString() };
+    const preset = presetFromPrep(prep, { name: nm });
     ctx.store.presets.push(preset); prep.presetId = preset.id; ctx.save(); m.close(); toast('Preset saved.'); ctx.hooks.toolbar();
   } }, 'Save preset')] });
   setTimeout(() => name.select(), 30);

@@ -89,13 +89,14 @@ function choiceCard(c, { onChange, onRemove, open, onToggleOpen }) {
 
 // The simple picker: choose topic(s), then a level (Quick), a stretch of the ladder (Range), or per-topic levels and options (Pool).
 // `def` is an existing query or pool (to change it) or null. onBrowse (optional) adds a button that swaps to the full list of questions.
-export function openQuickChooser({ title = 'Add a question', confirmLabel = 'Use this question', def = null, onDone, onBrowse = null, browseLabel = 'Browse all questions', tabs = ['quick', 'range', 'pool'] }) {
+export function openQuickChooser({ title = 'Add a question', confirmLabel = 'Use this question', def = null, onDone, onBrowse = null, browseLabel = 'Browse all questions', tabs = ['quick', 'range', 'pool'], shared = null }) {
   const isPoolDef = def && def.mode === 'pool';
   const choices = isPoolDef ? JSON.parse(JSON.stringify(poolChoices(def))) : [];
   const st = {
     topics: new Set(isPoolDef ? choices.map(c => c.topic) : def ? (def.topics || []) : []),
     level: def && def.level ? def.level : setLevel(), tab: isPoolDef ? 'pool' : def && isRange(def) ? 'range' : 'quick',
     lo: def ? def.lo : null, hi: def ? def.hi : null, choices, open: new Set(), q: '', seed: newSeed(),
+    poolId: shared && isPoolDef && def.poolId ? def.poolId : null, poolName: (def && def.label) || '', isNew: false, count: 1,
   };
   const T = (s) => mathToHTML(s, ctx.katex);
   const search = h('input', { type: 'text', placeholder: 'Find a topic…', 'aria-label': 'Find a topic', onInput: () => { st.q = search.value.toLowerCase(); drawTopics(); } });
@@ -105,7 +106,10 @@ export function openQuickChooser({ title = 'Add a question', confirmLabel = 'Use
   const TABS = { quick: ['Quick', 'A topic and a level'], range: ['Range', 'A stretch of the difficulty ladder'], pool: ['Pool', 'Several topics, each with its own levels and options; ⤮ moves to a different topic'] };
   const tabsEl = h('span', { class: 'seg', role: 'radiogroup', 'aria-label': 'How to choose' },
     tabs.map((id) => h('button', { role: 'radio', title: TABS[id][1], 'data-tab': id, onClick: () => { st.tab = id; st.seed = newSeed(); drawRest(); } }, TABS[id][0])));
-  const poolDef = () => ({ mode: 'pool', label: (def && def.label) || 'Pool', ...(def && def.poolId ? { poolId: def.poolId } : {}), choices: JSON.parse(JSON.stringify(st.choices)) });
+  const poolDef = () => {
+    const pid = shared ? st.poolId : (def && def.poolId);
+    return { mode: 'pool', label: (shared && st.poolId ? st.poolName.trim() : (def && def.label)) || 'Pool', ...(pid ? { poolId: pid } : {}), choices: JSON.parse(JSON.stringify(st.choices)) };
+  };
   const cur = () => (st.tab === 'range' && rc ? { mode: 'query', topics: [...st.topics], level: null, ...rc.get() } : st.tab === 'pool' ? poolDef() : { mode: 'query', topics: [...st.topics], level: st.level });
 
   function toggleTopic(name) {
@@ -120,6 +124,27 @@ export function openQuickChooser({ title = 'Add a question', confirmLabel = 'Use
       h('button', { class: 'star' + (t.pinned ? ' on' : ''), title: t.pinned ? 'Unpin this topic' : 'Pin this topic to the top', 'aria-label': (t.pinned ? 'Unpin ' : 'Pin ') + t.name, html: STAR,
         onClick: (e) => { e.stopPropagation(); togglePin(t.name); const top = list.scrollTop; drawTopics(); list.scrollTop = top; } }))),
       items.length ? null : h('div', { class: 'pk-none' }, 'No topic matches'));
+  }
+  // Preset editor only: a pool can be shared, so several questions draw from it without repeating a topic
+  const sharedBox = h('div', { class: 'pc-shared' });
+  function drawShared() {
+    if (!shared || st.tab !== 'pool') { setKids(sharedBox); return; }
+    const known = shared.pools.find(p => p.id === st.poolId);
+    const sel = h('select', { 'aria-label': 'Shared pool', onChange: (e) => {
+      const v = e.target.value;
+      if (v === '') { st.poolId = null; st.isNew = false; }
+      else if (v === '__new') { st.poolId = 'pool-' + Math.random().toString(36).slice(2, 9); st.isNew = true; st.poolName = `Pool ${shared.pools.length + 1}`; }
+      else { const p = shared.pools.find(x => x.id === v); st.poolId = p.id; st.isNew = false; st.poolName = p.name; st.choices = JSON.parse(JSON.stringify(poolChoices({ choices: p.choices }))); st.topics = new Set(st.choices.map(c => c.topic)); drawTopics(); }
+      st.seed = newSeed(); drawRest();
+    } },
+      h('option', { value: '', selected: !st.poolId }, 'Only this question'),
+      shared.pools.map(p => h('option', { value: p.id, selected: p.id === st.poolId && !st.isNew }, `Shared pool: ${p.name}`)),
+      h('option', { value: '__new', selected: st.isNew }, 'A new shared pool…'));
+    setKids(sharedBox,
+      h('label', { class: 'fl' }, 'Use this pool for', sel),
+      st.poolId ? h('label', { class: 'fl' }, 'Pool name', h('input', { type: 'text', value: st.poolName, placeholder: 'e.g. Mixed skills', onInput: (e) => { st.poolName = e.target.value; } })) : null,
+      st.poolId ? h('div', { class: 'hint' }, known || st.isNew ? 'Questions that use the same shared pool never repeat a topic. Changing the pool here changes every question that uses it.' : '') : h('div', { class: 'hint' }, 'Choose a shared pool to use the same topics for several questions.'),
+      shared.count && st.poolId ? h('label', { class: 'fl cnt' }, 'Add this many questions', h('input', { type: 'number', min: 1, max: 10, value: st.count, onInput: (e) => { st.count = Math.max(1, Math.min(10, parseInt(e.target.value, 10) || 1)); } })) : null);
   }
   const poolEntries = () => [...poolByTopic({ choices: st.choices }).values()].flat();
   function drawExample() {
@@ -137,7 +162,7 @@ export function openQuickChooser({ title = 'Add a question', confirmLabel = 'Use
   function drawRest() {
     const tops = [...st.topics];
     tabsEl.querySelectorAll('button').forEach(b => b.setAttribute('aria-checked', b.dataset.tab === st.tab));
-    rc = null;
+    rc = null; drawShared();
     if (!tops.length) { setKids(lvBox, h('div', { class: 'hint' }, st.tab === 'pool' ? 'Tick the topics this question can come from.' : 'Choose one or more topics.')); setKids(note); drawExample(); return; }
     if (st.tab === 'quick') {
       setKids(lvBox, levelButtons(tops, st.level, (l) => { st.level = l; st.seed = newSeed(); drawRest(); }));
@@ -157,11 +182,11 @@ export function openQuickChooser({ title = 'Add a question', confirmLabel = 'Use
     }
     drawExample();
   }
-  const ok = h('button', { class: 'btn primary', onClick: () => { if (!st.topics.size) return; m.close(); onDone(cur()); } }, confirmLabel);
+  const ok = h('button', { class: 'btn primary', onClick: () => { if (!st.topics.size) return; if (shared && st.tab === 'pool' && st.poolId && !st.poolName.trim()) { st.poolName = `Pool ${shared.pools.length + 1}`; } m.close(); onDone(cur(), { count: st.tab === 'pool' && st.poolId ? st.count : 1 }); } }, confirmLabel);
   const m = modal({ title, wide: true,
     body: h('div', { class: 'qk' },
       h('div', { class: 'qk-left' }, search, list),
-      h('div', { class: 'qk-right' }, h('div', { class: 'qk-tabs' }, h('span', { class: 'pk-col-h' }, 'Choose by'), tabsEl), lvBox, note, prev)),
+      h('div', { class: 'qk-right' }, h('div', { class: 'qk-tabs' }, h('span', { class: 'pk-col-h' }, 'Choose by'), tabsEl), sharedBox, lvBox, note, prev)),
     footer: [h('button', { class: 'btn', onClick: () => m.close() }, 'Cancel'), onBrowse ? h('button', { class: 'btn', onClick: () => { m.close(); onBrowse(); } }, browseLabel) : null, ok] });
   drawTopics(); drawRest();
   setTimeout(() => search.focus(), 30);

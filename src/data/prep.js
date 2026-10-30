@@ -259,8 +259,10 @@ export function nudgeSlot(prep, slot, dir) {
   fillSnapshot(slot);
   return true;
 }
+// topics already drawn by the questions that share a pool
+const matesOfPool = (prep, poolId) => { const m = new Set(); if (poolId) prep.questions.forEach(q => q.slots.forEach(sl => { if (sl.def.poolId === poolId && sl.meta) m.add(sl.meta.topic); })); return m; };
 export function addSlotDef(prep, q, def) {
-  const s = makeSlot(def, usedTopics(prep), undefined, usedKeys(prep), avoidFor(prep));
+  const s = makeSlot(def, usedTopics(prep), undefined, usedKeys(prep), avoidFor(prep), { mates: matesOfPool(prep, def.poolId) });
   q.slots.push(s); return s;
 }
 export function addSlotToQuestion(prep, q, pick) {
@@ -269,7 +271,7 @@ export function addSlotToQuestion(prep, q, pick) {
 }
 export function addQuestion(prep, pick, index = null) { return addQuestionDef(prep, { mode: 'fixed', pick }, index); }
 export function addQuestionDef(prep, def, index = null) {
-  const s = makeSlot(def, usedTopics(prep), undefined, usedKeys(prep), avoidFor(prep));
+  const s = makeSlot(def, usedTopics(prep), undefined, usedKeys(prep), avoidFor(prep), { mates: matesOfPool(prep, def.poolId) });
   const q = { id: uid(), slots: [s] };
   if (index === null) prep.questions.push(q); else prep.questions.splice(index, 0, q);
   return q;

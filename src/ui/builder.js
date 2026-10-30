@@ -9,6 +9,8 @@ import { newChoice } from '../data/pools.js';
 import { openPoolDialog, openEditDialog, pickName } from './dialogs.js';
 import { typeById } from '../core/engine.js';
 import * as P from '../data/prep.js';
+import { sharedFor, setSlotPool, addFromDef, addPartFromDef, ruleText, poolUsers } from '../data/presetdraft.js';
+const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
 const ICON_UP = '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 2.5h10M8 13.5V6M4.8 8.7 8 5.5l3.2 3.2"/></svg>';
 const ICON_DOWN = '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 13.5h10M8 2.5V10M4.8 7.3 8 10.5l3.2-3.2"/></svg>';
@@ -44,6 +46,11 @@ export function renderBuilder(root) {
   const total = qs.reduce((a, q) => a + q.marks, 0);
   const sel = ctx.ui.sel;
   root.replaceChildren();
+  if (prep.draft) root.append(h('div', { class: 'draftbar', role: 'region', 'aria-label': 'Preset editor' },
+    h('div', { class: 'dtext' }, h('b', {}, prep.draft.presetId ? 'Editing preset' : 'New preset'), h('span', {}, ' The questions below are samples. What gets saved is the rule under each one (exact question, topic and level, range or pool), plus the marks and working space.')),
+    h('div', { class: 'dbtn' },
+      h('button', { class: 'btn small ghost', onClick: () => ctx.hooks.cancelDraft && ctx.hooks.cancelDraft() }, 'Cancel'),
+      h('button', { class: 'btn small primary', onClick: () => ctx.hooks.saveDraft && ctx.hooks.saveDraft() }, 'Save preset'))));
   root.append(h('div', { class: 'summary' },
     h('span', {}, h('b', {}, `${prep.questions.length} question${prep.questions.length === 1 ? '' : 's'}`), ` · ${total} marks`),
     h('span', { style: { flex: 1 } }),
@@ -53,7 +60,7 @@ export function renderBuilder(root) {
         { label: 'New numbers', sub: 'Every question stays; locked ones are untouched', checked: rerollMode() === 'nums', onClick: () => rerollAll('nums') },
         { label: 'New questions', sub: 'A fresh question for each Quick or pooled row (same topic and level)', checked: rerollMode() === 'questions', onClick: () => rerollAll('questions') },
       ]) }, '▾'))));
-  if (!prep.questions.length) root.append(h('div', { class: 'empty' }, 'No questions yet. Choose a preset in the sidebar, or add a question.'));
+  if (!prep.questions.length) root.append(h('div', { class: 'empty' }, prep.draft ? 'No questions yet. Add the first question of this preset: exact, a topic and level, or a pool.' : 'No questions yet. Choose a preset in the sidebar, or add a question.'));
   else root.append(h('div', { class: 'colhead' + (aos ? ' aos' : '') }, h('span'), h('span', { class: 'qh' }, 'Question'), h('span', { class: 'c' }, 'Marks'), aos ? h('span', { class: 'c' }, 'Lines') : null, h('span')));
 
   prep.questions.forEach((q, qi) => {
@@ -85,10 +92,10 @@ export function renderBuilder(root) {
       const pinfo = poolInfo(slot);
       const toggleSel = () => { ctx.ui.sel = isRowSel ? null : { q: qi, k }; ctx.hooks.builder(); };
       const row = h('div', { class: 'prow' + (aos ? ' aos' : '') + (isRowSel ? ' sel' : '') + (p.l ? '' : ' nolab') },
-        h('div', { class: 'gut' }, pinfo && firstOfSlot ? h('button', { class: 'poolico', title: `Pool: this question is drawn from ${pinfo.n} choice${pinfo.n === 1 ? '' : 's'}. Click to edit them.`, 'aria-label': 'Edit the pool choices', html: ICON_POOL, onClick: () => openPoolDialog(slot, qi, p.si) }) : null),
+        h('div', { class: 'gut' }, pinfo && firstOfSlot ? h('button', { class: 'poolico', title: slot.def.poolId && prep.draft && poolUsers(prep, slot.def.poolId) > 1 ? `Shared pool “${pinfo.label}”, used by ${poolUsers(prep, slot.def.poolId)} questions. Click to edit it: the change applies to all of them.` : `Pool: this question is drawn from ${pinfo.n} choice${pinfo.n === 1 ? '' : 's'}. Click to edit them.`, 'aria-label': 'Edit the pool choices', html: ICON_POOL, onClick: () => openPoolDialog(slot, qi, p.si) }) : null),
         h('div', { class: 'lab' }, p.l ? `(${p.l})` : ''),
         h('div', { class: 'txt', title: 'Click for details and options', onClick: toggleSel,
-          html: T(p.text) + (p.edited ? ' <span class="badge ed">edited</span>' : '') }),
+          html: T(p.text) + (p.edited ? ' <span class="badge ed">edited</span>' : '') + (prep.draft && firstOfSlot ? `<div class="rulechip">${esc(ruleText(slot, prep))}</div>` : '') }),
         h('div', { class: 'c' }, stepper({ value: p.marks, step: 1, min: 1, manual: manualM, title: 'Marks for this part', onChange: (v) => { P.setMarks(slot, p.pi, v); ctx.commit(); } })),
         aos ? h('div', { class: 'c' }, stepper({ value: p.lines, step: 0.5, min: 0.5, manual: manualL, title: 'Working space in ruled lines (decimals allowed)', onChange: (v) => { P.setLines(slot, p.pi, v); ctx.commit({ builder: true }); } })) : null,
         h('div', { class: 'c end' }, p.calc ? h('span', { class: 'calcico', title: 'Calculator question', 'aria-label': 'Calculator question', html: ICON_CALC }) : null,
@@ -108,7 +115,8 @@ export function renderBuilder(root) {
 function addSimple() {
   const prep = ctx.prep;
   openQuickChooser({ title: 'Add a question', confirmLabel: 'Add question', onBrowse: browseAdd,
-    onDone: (def) => { P.addQuestionDef(prep, def); ctx.ui.sel = { q: prep.questions.length - 1, k: 0 }; ctx.commit(); } });
+    shared: sharedFor(prep, true),
+    onDone: (def, o = {}) => { const added = addFromDef(prep, def, o.count || 1); ctx.ui.sel = { q: prep.questions.indexOf(added[0]), k: 0 }; ctx.commit(); } });
 }
 function browseAdd() {
   const prep = ctx.prep;
@@ -200,14 +208,15 @@ function changeSlot(q, qi, slot) {
   const simple = () => {
     const def = slot.def.mode === 'query' || slot.def.mode === 'pool' ? slot.def : P.queryOfPick(slot.pick);
     openQuickChooser({ title: `Choose a question for ${qi + 1}`, confirmLabel: 'Use this question', def, onBrowse: browse,
-      onDone: (d) => { if (d.mode === 'pool') P.setPool(prep, slot, d, { redraw: true }); else P.setQuery(prep, slot, d, { redraw: true }); ctx.commit(); } });
+      shared: sharedFor(prep),
+      onDone: (d) => { if (d.mode === 'pool') setSlotPool(prep, slot, d, { redraw: true }); else P.setQuery(prep, slot, d, { redraw: true }); ctx.commit(); } });
   };
   const browse = () => openPicker({ title: `Choose a question for ${qi + 1}`, current: slot.pick, onSimple: simple, onPick: (c) => { P.applyChoice(slot, c); ctx.commit(); } });
   if (slot.def.mode === 'query' || slot.def.mode === 'pool') simple(); else browse();
 }
 function addPart(qi) {
   const prep = ctx.prep, q = prep.questions[qi];
-  const simple = () => openQuickChooser({ title: `Add a part to question ${qi + 1}`, confirmLabel: 'Add part', onBrowse: browse, onDone: (def) => { P.addSlotDef(prep, q, def); ctx.commit(); } });
+  const simple = () => openQuickChooser({ title: `Add a part to question ${qi + 1}`, confirmLabel: 'Add part', onBrowse: browse, shared: sharedFor(prep), onDone: (def) => { addPartFromDef(prep, q, def); ctx.commit(); } });
   const browse = () => openPicker({ title: `Add a part to question ${qi + 1}`, confirmLabel: 'Add part', onSimple: simple, onPick: (c) => { const s = P.addSlotToQuestion(prep, q, c.pick); P.applyChoice(s, c); ctx.commit(); } });
   browse();
 }
