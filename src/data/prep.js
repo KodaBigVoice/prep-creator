@@ -167,13 +167,18 @@ export function queryOfPick(pick) {
 }
 // Step to the next easier (-1) or harder (+1) question in this question's topic. Works on any question:
 // a hand-picked one becomes a Quick question; a pool stays a pool (re-rolling still moves between its topics). False at either end.
-export function nudgeSlot(prep, slot, dir) {
-  if (slot.locked) return false;
-  const e = entryOfPick(slot.pick); if (!e) return false;
+function nudgeTarget(slot, dir) {
+  if (slot.locked) return null;
+  const e = entryOfPick(slot.pick); if (!e) return null;
   const od = slot.def;
   const def = od.mode === 'query' ? od : od.mode === 'pool' ? { mode: 'query', topics: [e.topic], level: null } : { mode: 'query', topics: [e.topic], level: levelOf(e) };
   const s = step(def, e.key, dir);
-  if (!s) return false;
+  return s ? { def, s } : null;
+}
+export const canNudge = (slot, dir) => !!nudgeTarget(slot, dir);
+export function nudgeSlot(prep, slot, dir) {
+  const t = nudgeTarget(slot, dir); if (!t) return false;
+  const od = slot.def, { def, s } = t;
   if (od.mode !== 'pool') { slot.def = { ...def, level: s.level }; if (od.marks) slot.def.marks = od.marks; if (od.lines) slot.def.lines = od.lines; }
   slot.pick = s.entry.key; slot.seed = newSeed(); slot.edits = null; slot.marksManual = []; slot.linesManual = []; slot.flags = null;
   freshen(slot, avoidFor(prep, slot.id), () => { slot.seed = newSeed(); });

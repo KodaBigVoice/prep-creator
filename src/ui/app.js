@@ -7,6 +7,7 @@ import { STARTER_PRESETS } from '../data/presets.js';
 import * as P from '../data/prep.js';
 import * as FL from '../data/filelink.js';
 import { setHistory } from '../data/fresh.js';
+import { renderSheets, buildPdf, saveBlob } from './pdf.js';
 import { buildLayout, buildAnswerPages, DEFAULT_LAYOUT, FLOORS } from '../layout/layout.js';
 import { renderBuilder } from './builder.js';
 import { openHistory, openSavePreset } from './dialogs.js';
@@ -126,16 +127,17 @@ document.addEventListener('keydown', (e) => {
   else if (k === 'y' || (k === 'z' && e.shiftKey)) { e.preventDefault(); ctx.redo(); }
 });
 ctx.hooks.status = () => { syncUndo(); saveStat.textContent = ctx.dirty ? 'Unsaved changes' : (SAVED_TEXT[ctx.ui.savedTo] || SAVED_TEXT.browser); saveStat.classList.toggle('dirty', !!ctx.dirty); };
+const ICON_PENCIL = '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M2.8 13.2l.6-2.9 7.2-7.2a1.4 1.4 0 0 1 2 0l.3.3a1.4 1.4 0 0 1 0 2l-7.2 7.2-2.9.6zM9.6 4.1l2.3 2.3"/></svg>';
+const ICON_DOWNLOAD = '<svg width="17" height="17" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2.2v8.2M4.6 7.2 8 10.6l3.4-3.4M2.8 13.4h10.4"/></svg>';
 function renderToolbar() {
   const prep = ctx.prep;
-  const nameIn = h('input', { type: 'text', class: 'namebox', value: prep.name, 'aria-label': 'Prep name', onInput: (e) => { prep.name = e.target.value; prep.nameAuto = false; ctx.commit({ builder: false }); } });
+  const nameIn = h('input', { type: 'text', class: 'namebox', value: prep.name, placeholder: 'Name this prep', 'aria-label': 'Prep name', onInput: (e) => { prep.name = e.target.value; prep.nameAuto = false; ctx.commit({ builder: false }); } });
   const seg = (items) => h('div', { class: 'seg', role: 'radiogroup', 'aria-label': 'Print style' }, items.map(([val, label]) => h('button', { role: 'radio', 'aria-checked': ctx.layout.mode === val, onClick: () => { ctx.layout.mode = val; ctx.commit({ toolbar: true, dirty: false }); } }, label)));
   setKids(toolbar,
     h('button', { class: 'iconbtn hamburger', 'aria-label': 'Options', 'aria-pressed': !!ctx.ui.sidebar, title: ctx.ui.sidebar ? 'Hide the options panel' : 'Show the options panel', onClick: toggleSidebar },
       h('span', { html: '<svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 5h12M3 9h12M3 13h12"/></svg>' })),
     h('img', { class: 'applogo', src: 'logo.svg', alt: 'PMU | Prep Maths Universe', title: 'PMU | Prep Maths Universe' }),
-    h('button', { class: 'btn', 'data-menu-anchor': '', onClick: (e) => newMenu(e.currentTarget) }, 'New ▾'),
-    h('div', { class: 'field' }, h('label', {}, 'Name'), nameIn),
+    h('div', { class: 'field namefield', title: 'The name of this prep. Click to rename it.' }, h('span', { class: 'penico', html: ICON_PENCIL }), nameIn),
     h('span', { class: 'sp' }),
     saveStat,
     h('span', { class: 'undoredo' }, undoBtn, redoBtn),
@@ -146,7 +148,10 @@ function renderToolbar() {
     seg([['qo', 'Prep style'], ['aos', 'Exam style']]),
     h('span', { class: 'splitbtn' },
       h('button', { class: 'btn primary printbtn', onClick: () => doPrint(), title: PRINT_LABEL[printMode()] }, 'Print'),
-      h('button', { class: 'btn primary arrow', 'aria-label': 'Print options', onClick: (e) => printMenu(e.currentTarget) }, '▾')));
+      h('button', { class: 'btn primary arrow', 'aria-label': 'Print options', onClick: (e) => printMenu(e.currentTarget) }, '▾')),
+    h('span', { class: 'splitbtn' },
+      h('button', { class: 'btn dlbtn', 'aria-label': DOWNLOAD_LABEL[downloadMode()], title: DOWNLOAD_LABEL[downloadMode()], html: ICON_DOWNLOAD, onClick: () => doDownload() }),
+      h('button', { class: 'btn arrow', 'aria-label': 'Download options', onClick: (e) => downloadMenu(e.currentTarget) }, '▾')));
   ctx.hooks.status();
 }
 function newMenu(anchor) {
@@ -184,6 +189,38 @@ function doPrint(kind = printMode()) {
   window.print();
 }
 
+// ---------- downloading a PDF ----------
+const DOWNLOAD_LABEL = { q: 'Download questions as PDF', a: 'Download answers as PDF', both: 'Download questions + answers as PDF' };
+const downloadMode = () => store.settings.downloadMode || 'q';
+function downloadMenu(anchor) {
+  showMenu(anchor, [
+    { label: 'Questions only', checked: downloadMode() === 'q', onClick: () => doDownload('q') },
+    { label: 'Answers only', checked: downloadMode() === 'a', onClick: () => doDownload('a') },
+    { label: 'Questions and answers', sub: 'Answers follow the questions in one PDF', checked: downloadMode() === 'both', onClick: () => doDownload('both') },
+    { sep: true }, { note: 'Makes an A4 PDF straight away, no print window. The pages are pictures of the sheets, so the text cannot be selected: use Print > Save as PDF if you need that.' },
+  ]);
+}
+let downloading = false;
+async function doDownload(kind = downloadMode()) {
+  if (downloading) return;
+  downloading = true;
+  store.settings.downloadMode = kind; ctx.save();
+  savePrep(true); renderToolbar();
+  const prep = ctx.prep, safe = (prep.name || 'Prep').replace(/[\\/:*?"<>|]+/g, ' ').replace(/\s+/g, ' ').trim() || 'Prep';
+  const t = h('div', { class: 'toast' }, 'Making the PDF…'); document.body.append(t);
+  try {
+    const sheets = [];
+    if (kind !== 'a') sheets.push(...buildLayout(prep, ctx.layout, ctx.katex).pages);
+    if (kind !== 'q') sheets.push(...buildAnswerPages(prep, ctx.katex, ctx.layout));
+    const imgs = await renderSheets(sheets, (i, n) => { t.textContent = `Making the PDF… page ${Math.min(i + 1, n)} of ${n}`; });
+    const name = kind === 'a' ? `${safe} - Answers` : kind === 'both' ? `${safe} - with answers` : safe;
+    saveBlob(buildPdf(imgs, name), `${name}.pdf`);
+    t.textContent = `Downloaded ${name}.pdf`;
+  } catch (e) { console.error(e); t.textContent = 'Could not make the PDF: ' + e.message; }
+  setTimeout(() => t.remove(), 3500);
+  downloading = false;
+}
+
 // ---------- options sidebar ----------
 const sideEl = h('div', { class: 'side' });
 const TABS = [['presets', 'Presets'], ['rubric', 'Rubric'], ['layout', 'Layout'], ['history', 'History']];
@@ -192,7 +229,7 @@ function renderSidebar() {
   const tabs = h('div', { class: 'tabs', role: 'tablist' }, TABS.map(([k, l]) => h('button', { role: 'tab', 'aria-selected': tab === k, onClick: () => { ctx.ui.tab = k; renderSidebar(); } }, l)));
   const body = h('div', { class: 'tabbody' });
   ({ presets: tabPresets, rubric: tabRubric, layout: tabLayout, history: tabHistory })[tab](body);
-  setKids(sideEl, h('div', { class: 'side-h' }, 'Options'), tabs, body);
+  setKids(sideEl, h('div', { class: 'side-h' }, h('span', {}, 'Options'), h('button', { class: 'btn small', 'data-menu-anchor': '', title: 'Start a new prep', onClick: (e) => newMenu(e.currentTarget) }, 'New ▾')), tabs, body);
 }
 function tabPresets(el) {
   const prep = ctx.prep;

@@ -30,7 +30,11 @@ select:focus,input:focus,textarea:focus,button:focus-visible{outline:2px solid v
 .seg{display:inline-flex;border:1px solid var(--line);border-radius:999px;background:#eef1f5;padding:2px}
 .seg button{border:0;background:transparent;padding:4px 14px;border-radius:999px;color:var(--muted)}
 .seg button[aria-checked=true]{background:#fff;color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.15);font-weight:600}
-.namebox{width:170px}
+.namefield{position:relative}
+.namefield .penico{position:absolute;left:9px;color:var(--muted);display:inline-flex;pointer-events:none}
+.namebox{width:230px;padding-left:28px;font-weight:600;border-color:#c9d3e6;background:#fff}
+.namebox::placeholder{font-weight:400;color:#8a95a8}
+.dlbtn{padding:5px 9px;display:inline-flex;align-items:center}
 .savestat{font-size:12px;color:var(--muted)}
 .savestat.dirty{color:var(--warn)}
 .divider{width:1px;height:24px;background:var(--line);margin:0 6px}
@@ -46,7 +50,7 @@ body.resizing{cursor:col-resize;user-select:none}
 .split:hover,.split.drag,.split:focus-visible{background:#b9c9f5}
 .split:hover::after,.split.drag::after{background:var(--accent)}
 .side{background:var(--panel);border-right:1px solid var(--line);overflow:auto;display:flex;flex-direction:column;min-width:0}
-.side-h{padding:12px 14px 0;font-weight:700;letter-spacing:-.01em}
+.side-h{padding:12px 14px 0;font-weight:700;letter-spacing:-.01em;display:flex;align-items:center;justify-content:space-between}
 .tabs{display:flex;gap:2px;padding:8px 10px 0;border-bottom:1px solid var(--line)}
 .tabs button{flex:1;border:0;background:transparent;padding:7px 4px;border-radius:6px 6px 0 0;color:var(--muted);border-bottom:2px solid transparent;font-size:13px}
 .tabs button:hover{background:#f3f5f8}
@@ -117,7 +121,8 @@ body.resizing{cursor:col-resize;user-select:none}
 .calcico svg{display:block}
 .badge.ed{background:#fff1d6;color:#8a5a00}
 .detail{position:relative;padding:8px 56px 12px 44px;background:#f6f9ff;border-top:1px dashed #c9d6f3;border-radius:0 0 8px 8px}
-.detail .dpath{display:flex;align-items:center;flex-wrap:wrap;gap:4px;font-size:13px}
+.detail .dpath{display:block;font-size:13px;line-height:1.5}
+.detail .dpath .tag{display:inline-block;vertical-align:1px}
 .detail .dside{position:absolute;right:12px;top:6px;display:flex;flex-direction:column;gap:13px;width:34px;align-items:center}
 .detail .dside .iconbtn{width:30px;height:28px}
 .iconbtn.boxed{background:#fff;border-color:var(--line);color:#4b5563}
@@ -258,7 +263,9 @@ body.resizing{cursor:col-resize;user-select:none}
 .applogo{height:26px;width:auto;display:block;margin:0 4px}
 
 /* ---- choosing by description: Quick / Range ---- */
-.iconbtn.nudge{width:24px}
+.detail .dpath-rest{color:#3a4a6a}
+.abtn:disabled{opacity:.35;cursor:default;background:transparent;color:#2a3a5c}
+.abtn{white-space:nowrap}
 .modeRow,.qrow{display:flex;align-items:center;gap:10px;margin:2px 0 6px;flex-wrap:wrap}
 .qlab{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);min-width:46px}
 .modeRow .seg button{padding:3px 12px;font-size:13px}
@@ -302,3 +309,5 @@ body.resizing{cursor:col-resize;user-select:none}
 .qk-tabs .seg button{padding:3px 14px;font-size:13px}
 .qk-right .rwrap{max-width:none}
 .qrow .hint{margin:0}
+.namefield .namebox{padding-left:32px}
+.namefield .penico{left:11px}
