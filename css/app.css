@@ -311,3 +311,6 @@ body.resizing{cursor:col-resize;user-select:none}
 .qrow .hint{margin:0}
 .namefield .namebox{padding-left:32px}
 .namefield .penico{left:11px}
+.toastbtn{margin-left:12px;border:0;background:transparent;color:#9db5ee;font-weight:600;cursor:pointer;padding:0}
+.toastbtn:hover{text-decoration:underline}
+.splitbtn>.btn.small.arrow{padding:3px 7px}

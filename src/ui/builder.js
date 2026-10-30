@@ -46,7 +46,12 @@ export function renderBuilder(root) {
   root.append(h('div', { class: 'summary' },
     h('span', {}, h('b', {}, `${prep.questions.length} question${prep.questions.length === 1 ? '' : 's'}`), ` · ${total} marks`),
     h('span', { style: { flex: 1 } }),
-    h('button', { class: 'btn small', onClick: rerollAll, title: 'New numbers for every question that is not locked' }, '↻ Re-roll all')));
+    h('span', { class: 'splitbtn' },
+      h('button', { class: 'btn small', onClick: () => rerollAll(), title: REROLL[rerollMode()].tip }, REROLL[rerollMode()].label),
+      h('button', { class: 'btn small arrow', 'aria-label': 'Re-roll options', onClick: (e) => showMenu(e.currentTarget, [
+        { label: 'New numbers', sub: 'Every question stays; locked ones are untouched', checked: rerollMode() === 'nums', onClick: () => rerollAll('nums') },
+        { label: 'New questions', sub: 'A fresh question for each Quick or pooled row (same topic and level)', checked: rerollMode() === 'questions', onClick: () => rerollAll('questions') },
+      ]) }, '▾'))));
   if (!prep.questions.length) root.append(h('div', { class: 'empty' }, 'No questions yet. Choose a preset in the sidebar, or add a question.'));
   else root.append(h('div', { class: 'colhead' + (aos ? ' aos' : '') }, h('span'), h('span', { class: 'qh' }, 'Question'), h('span', { class: 'c' }, 'Marks'), aos ? h('span', { class: 'c' }, 'Lines') : null, h('span')));
 
@@ -172,13 +177,23 @@ function joinQuestion(qi, dir) {
   ctx.ui.sel = { q: r.q, k };
   ctx.commit();
 }
-async function rerollAll() {
+const REROLL = {
+  nums: { label: '↻ New numbers', tip: 'New numbers for every question that is not locked. The questions stay.' },
+  questions: { label: '⤮ New questions', tip: 'A fresh question for every Quick or pooled row that is not locked. Exact questions are left alone.' },
+};
+const rerollMode = () => (ctx.store.settings.rerollMode === 'questions' ? 'questions' : 'nums');
+function rerollAll(kind = rerollMode()) {
   const prep = ctx.prep;
-  if (!(await confirmBox({ title: 'Re-roll every question?', message: 'Every question that is not locked gets new numbers. The current numbers cannot be brought back.', confirmLabel: 'Re-roll all' }))) return;
-  let failed = 0;
-  prep.questions.forEach(q => q.slots.forEach(s => { try { P.rerollSlot(prep, s); } catch (e) { failed++; console.error('Re-roll failed', s.pick, e); } }));
+  ctx.store.settings.rerollMode = kind; ctx.save();
+  let failed = 0, n = 0;
+  prep.questions.forEach(q => q.slots.forEach(s => {
+    if (s.locked) return;
+    const swappable = s.def.mode === 'query' || s.def.mode === 'pool' || (s.def.pick && s.def.pick.endsWith(':*'));
+    if (kind === 'questions' && !swappable) return;
+    try { if (kind === 'questions') P.rerollSlot(prep, s); else P.renumber(prep, s); n++; } catch (e) { failed++; console.error('Re-roll failed', s.pick, e); }
+  }));
   ctx.commit();
-  if (failed) toast(`${failed} question${failed === 1 ? '' : 's'} could not be re-rolled and ${failed === 1 ? 'was' : 'were'} left as they were.`, 5000);
+  toast(failed ? `${failed} question${failed === 1 ? '' : 's'} could not be re-rolled and ${failed === 1 ? 'was' : 'were'} left as they were.` : kind === 'nums' ? 'New numbers for every question that is not locked.' : `${n} question${n === 1 ? '' : 's'} replaced.`, 5000, { label: 'Undo', onClick: () => ctx.undo() });
 }
 // Replace a question. A Quick or Range question opens the simple picker (its topic and level filled in); anything else opens the full list first. Each can switch to the other.
 function changeSlot(q, qi, slot) {

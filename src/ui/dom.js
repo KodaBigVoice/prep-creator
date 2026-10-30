@@ -58,8 +58,8 @@ export function modal({ title, body, footer, narrow = false, wide = false, onClo
   return { close, scrim };
 }
 
-export function toast(msg, ms = 2600) {
-  const t = h('div', { class: 'toast' }, msg);
+export function toast(msg, ms = 2600, action = null) {
+  const t = h('div', { class: 'toast' }, msg, action ? h('button', { class: 'toastbtn', onClick: () => { t.remove(); action.onClick(); } }, action.label) : null);
   document.body.append(t); setTimeout(() => t.remove(), ms);
 }
 export function download(name, text, type = 'application/json') {
