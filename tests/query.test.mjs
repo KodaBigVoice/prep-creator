@@ -51,6 +51,43 @@ const nq = makeSlot({ mode: 'query', topics: ['Equations'], level: 'Core' }); pr
 nudgeSlot(prep, nq, 1); const keepKey = nq.pick, keepDef = JSON.stringify(nq.def);
 let changedNums = 0; for (let i = 0; i < 20; i++) { const b = nq.snapshot.parts[0].body; renumber(prep, nq); ok(nq.pick === keepKey && JSON.stringify(nq.def) === keepDef, 'renumber keeps the question and its definition'); if (nq.snapshot.parts[0].body !== b) changedNums++; }
 ok(changedNums >= 15, 'renumber changes the numbers: ' + changedNums);
+// ---- pools with choices: topic + levels + hand-picked options ----
+{ const Pl = await import('../src/data/pools.js');
+  const { newChoice, toggleLevel, toggleOption, choiceOptions, poolByTopic, poolChoices } = Pl;
+  const c = newChoice('Substitution', 'Core');
+  ok(choiceOptions(c).length === 29 && choiceOptions(c).every(e => e.levels.includes('Core')), 'a level chip includes every option at that level');
+  toggleLevel(c, 'Additional'); const both = choiceOptions(c).length; ok(both > 29 && both <= 29 + 24, 'two levels: ' + both);
+  const one = choiceOptions(c)[3].key; toggleOption(c, one, false); ok(!choiceOptions(c).some(e => e.key === one) && choiceOptions(c).length === both - 1, 'untick one option');
+  toggleOption(c, one, true); ok(choiceOptions(c).length === both && !(c.off || []).length, 'tick it back: nothing left over');
+  toggleLevel(c, 'Core'); toggleLevel(c, 'Additional');
+  const hand = choiceOptions(c).length === 0; ok(hand, 'both chips off: empty');
+  const keys = choiceOptions(newChoice('Substitution', 'Further')).map(e => e.key); toggleOption(c, keys[0], true);
+  ok(choiceOptions(c).length === 1 && c.add.length === 1, 'hand-picking an option outside the levels adds just that one');
+  // legacy pools (a list of question types) read as choices
+  const leg = { mode: 'pool', label: 'Old', candidates: [{ pick: 'pct-buildup:*', on: true }, { pick: 'hcf-lcm:*', on: true }, { pick: 'sub-neg-add:one-negative', on: true }] };
+  const ch = poolChoices(leg); ok(ch.length === 3 && ch.map(x => x.topic).sort().join() === ['HCF and LCM', 'Percentages', 'Substitution'].sort().join(), 'legacy pool becomes one choice per topic');
+  ok(choiceOptions(ch.find(x => x.topic === 'Substitution')).length === 1, 'a single hand-picked legacy option stays single');
+  // shuffling a pool always changes topic (when it has more than one); new numbers never does
+  const P2 = await import('../src/data/prep.js');
+  const def = { mode: 'pool', label: 'Mixed', choices: [newChoice('Substitution', 'Core'), newChoice('Order of operations (BIDMAS)', 'Core'), newChoice('Ratio and proportion', 'Core')] };
+  const pp = newPrep({ set: 'Y7 Additional', name: 't', minutes: 30 }); const ps = P2.makeSlot(def); pp.questions.push({ id: 'pool', slots: [ps] });
+  const seen = new Set();
+  for (let i = 0; i < 80; i++) { const t0 = ps.meta.topic; P2.rerollSlot(pp, ps); seen.add(ps.meta.topic); ok(ps.meta.topic !== t0, `shuffle left ${t0} but landed on ${ps.meta.topic}`); }
+  ok(seen.size === 3, 'all three topics come up: ' + [...seen]);
+  const t1 = ps.meta.topic; for (let i = 0; i < 20; i++) { P2.renumber(pp, ps); ok(ps.meta.topic === t1, 'new numbers keeps the topic'); }
+  // a pool with one topic shuffles to a different question in it
+  const one1 = P2.makeSlot({ mode: 'pool', label: 'One', choices: [newChoice('Substitution', 'Core')] }); pp.questions.push({ id: 'one', slots: [one1] });
+  let moved = 0; for (let i = 0; i < 20; i++) { const k = one1.pick; P2.rerollSlot(pp, one1); if (one1.pick !== k) moved++; } ok(moved >= 17, 'single-topic pool: shuffle changes the question ' + moved);
+  // legacy pool shuffles topics too
+  const lg = P2.makeSlot(leg); pp.questions.push({ id: 'leg', slots: [lg] });
+  for (let i = 0; i < 40; i++) { const t0 = lg.meta.topic; P2.rerollSlot(pp, lg); ok(lg.meta.topic !== t0, 'legacy pool shuffle changes topic'); }
+  // multi-topic Quick questions shuffle topics as well
+  const mq = P2.makeSlot({ mode: 'query', topics: ['Substitution', 'Equations', 'Fractions'], level: 'Core' }); pp.questions.push({ id: 'mq', slots: [mq] });
+  for (let i = 0; i < 40; i++) { const t0 = mq.meta.topic; P2.rerollSlot(pp, mq); ok(mq.meta.topic !== t0, 'multi-topic quick shuffle changes topic'); }
+  // nudging a pool keeps its topic and stays a pool
+  const t2 = ps.meta.topic; P2.nudgeSlot(pp, ps, 1); ok(ps.def.mode === 'pool' && ps.meta.topic === t2, 'nudge keeps pool + topic');
+  console.log(bad ? `${bad} problems (pools)` : 'pool tests passed'); if (bad) process.exit(1);
+}
 // the starter recipe builds many times without errors, and every slot fits its description
 for (let i = 0; i < 40; i++) {
   const p = prepFromPreset(STARTER_PRESETS[0], 'Y7 Additional', 'x');

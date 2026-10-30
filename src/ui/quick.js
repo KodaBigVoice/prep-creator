@@ -5,6 +5,8 @@ import { generate } from '../core/engine.js';
 import { newSeed } from '../core/rng.js';
 import { mathToHTML } from '../layout/render.js';
 import { LEVELS, topicList, levelCounts, resolve, ladder, isRange } from '../data/query.js';
+import { setById } from '../data/sets.js';
+import { poolChoices, poolByTopic, choiceOptions, newChoice, toggleLevel, toggleOption } from '../data/pools.js';
 
 // ---- pinned topics (kept in the browser settings and in the history file) ----
 export const pinnedTopics = () => (ctx.store.settings.pinned ||= []);
@@ -54,32 +56,78 @@ export function rangeControl(topics, lo, hi, onInput) {
   return { el, get, empty: !n };
 }
 
-// The simple picker: choose topic(s), then a level (Quick) or a stretch of the ladder (Range). `def` is an existing query (to change it) or null.
-// onBrowse (optional) adds a button that swaps to the full list of questions.
-export function openQuickChooser({ title = 'Add a question', confirmLabel = 'Use this question', def = null, onDone, onBrowse = null, browseLabel = 'Browse all questions' }) {
-  const st = { topics: new Set(def ? (def.topics || []) : []), level: def && def.level ? def.level : 'Core', tab: def && isRange(def) ? 'range' : 'quick', lo: def ? def.lo : null, hi: def ? def.hi : null, q: '', seed: newSeed() };
+// The level a new choice starts at: the level of the set being made
+const setLevel = () => { const st = ctx.prep && setById[ctx.prep.set]; return st ? st.level : 'Core'; };
+
+// ---- one pool choice: a topic, its level chips, and (folded away) a tick box for every option ----
+function choiceCard(c, { onChange, onRemove, open, onToggleOpen }) {
+  const all = ladder([c.topic]), counts = levelCounts([c.topic]);
+  const inc = new Set(choiceOptions(c).map(e => e.key));
+  const chips = h('div', { class: 'lvbtns' }, LEVELS.map(l => {
+    const at = all.filter(e => e.levels.includes(l)), on = (c.levels || []).includes(l);
+    const part = on && at.some(e => !inc.has(e.key));
+    return h('button', { class: 'lvbtn' + (part ? ' part' : ''), role: 'checkbox', 'aria-checked': String(on), disabled: !counts[l] || undefined,
+      title: !counts[l] ? 'Nothing at this level in this topic' : on ? `Untick all ${l} options` : `Tick all ${l} options`, onClick: () => { toggleLevel(c, l); onChange(); } },
+      l, h('small', {}, counts[l] ? (on ? `${at.filter(e => inc.has(e.key)).length}/${counts[l]}` : String(counts[l])) : '–'));
+  }));
+  let last = -1;
+  const rows = open ? h('div', { class: 'pc-opts' }, all.map((e, i) => h('label', { class: 'pc-opt' },
+    h('input', { type: 'checkbox', checked: inc.has(e.key), onClick: (ev) => {
+      const want = ev.target.checked;
+      if (ev.shiftKey && last >= 0) { const [x, y] = [Math.min(last, i), Math.max(last, i)]; for (let k = x; k <= y; k++) toggleOption(c, all[k].key, want); } else toggleOption(c, e.key, want);
+      last = i; onChange();
+    } }),
+    h('span', { class: 'pc-nm' }, `${e.type} › ${e.label}`), h('small', {}, e.levels.join(' · '))))) : null;
+  return h('div', { class: 'pc' + (c.enabled === false ? ' off' : '') },
+    h('div', { class: 'pc-h' },
+      h('input', { type: 'checkbox', checked: c.enabled !== false, title: 'Include this topic in the pool', 'aria-label': 'Include ' + c.topic, onChange: (e) => { c.enabled = e.target.checked; onChange(); } }),
+      h('b', {}, c.topic), h('small', {}, `${inc.size} of ${all.length} options`), h('span', { style: { flex: 1 } }),
+      h('button', { class: 'linkbtn', onClick: onToggleOpen }, open ? 'Hide options' : 'Pick options…'),
+      h('button', { class: 'iconbtn', title: 'Remove this topic from the pool', 'aria-label': 'Remove ' + c.topic, onClick: onRemove }, '✕')),
+    chips, rows);
+}
+
+// The simple picker: choose topic(s), then a level (Quick), a stretch of the ladder (Range), or per-topic levels and options (Pool).
+// `def` is an existing query or pool (to change it) or null. onBrowse (optional) adds a button that swaps to the full list of questions.
+export function openQuickChooser({ title = 'Add a question', confirmLabel = 'Use this question', def = null, onDone, onBrowse = null, browseLabel = 'Browse all questions', tabs = ['quick', 'range', 'pool'] }) {
+  const isPoolDef = def && def.mode === 'pool';
+  const choices = isPoolDef ? JSON.parse(JSON.stringify(poolChoices(def))) : [];
+  const st = {
+    topics: new Set(isPoolDef ? choices.map(c => c.topic) : def ? (def.topics || []) : []),
+    level: def && def.level ? def.level : setLevel(), tab: isPoolDef ? 'pool' : def && isRange(def) ? 'range' : 'quick',
+    lo: def ? def.lo : null, hi: def ? def.hi : null, choices, open: new Set(), q: '', seed: newSeed(),
+  };
   const T = (s) => mathToHTML(s, ctx.katex);
   const search = h('input', { type: 'text', placeholder: 'Find a topic…', 'aria-label': 'Find a topic', onInput: () => { st.q = search.value.toLowerCase(); drawTopics(); } });
   const list = h('div', { class: 'qk-topics', role: 'listbox', 'aria-label': 'Topics', 'aria-multiselectable': 'true' });
   const lvBox = h('div'), note = h('div', { class: 'hint' }), prev = h('div', { class: 'pk-preview qk-prev' });
   let rc = null;
-  const tabs = h('span', { class: 'seg', role: 'radiogroup', 'aria-label': 'How to choose' },
-    [['quick', 'Quick', 'A topic and a level'], ['range', 'Range', 'A stretch of the difficulty ladder']].map(([id, label, t]) => h('button', { role: 'radio', title: t, 'data-tab': id, onClick: () => { st.tab = id; st.seed = newSeed(); drawRest(); } }, label)));
-  const cur = () => (st.tab === 'range' && rc ? { topics: [...st.topics], level: null, ...rc.get() } : { topics: [...st.topics], level: st.level });
+  const TABS = { quick: ['Quick', 'A topic and a level'], range: ['Range', 'A stretch of the difficulty ladder'], pool: ['Pool', 'Several topics, each with its own levels and options; ⤮ moves to a different topic'] };
+  const tabsEl = h('span', { class: 'seg', role: 'radiogroup', 'aria-label': 'How to choose' },
+    tabs.map((id) => h('button', { role: 'radio', title: TABS[id][1], 'data-tab': id, onClick: () => { st.tab = id; st.seed = newSeed(); drawRest(); } }, TABS[id][0])));
+  const poolDef = () => ({ mode: 'pool', label: (def && def.label) || 'Pool', ...(def && def.poolId ? { poolId: def.poolId } : {}), choices: JSON.parse(JSON.stringify(st.choices)) });
+  const cur = () => (st.tab === 'range' && rc ? { mode: 'query', topics: [...st.topics], level: null, ...rc.get() } : st.tab === 'pool' ? poolDef() : { mode: 'query', topics: [...st.topics], level: st.level });
 
+  function toggleTopic(name) {
+    if (st.topics.has(name)) { st.topics.delete(name); st.choices = st.choices.filter(c => c.topic !== name); }
+    else { st.topics.add(name); if (!st.choices.some(c => c.topic === name)) st.choices.push(newChoice(name, setLevel())); }
+    st.lo = st.hi = null;
+  }
   function drawTopics() {
     const items = sortedTopics().filter(t => !st.q || t.name.toLowerCase().includes(st.q));
-    setKids(list, items.map(t => h('div', { class: 'qk-t' + (st.topics.has(t.name) ? ' on' : ''), role: 'option', 'aria-selected': st.topics.has(t.name), onClick: () => { if (st.topics.has(t.name)) st.topics.delete(t.name); else st.topics.add(t.name); st.lo = st.hi = null; drawTopics(); drawRest(); } },
+    setKids(list, items.map(t => h('div', { class: 'qk-t' + (st.topics.has(t.name) ? ' on' : ''), role: 'option', 'aria-selected': st.topics.has(t.name), onClick: () => { toggleTopic(t.name); drawTopics(); drawRest(); } },
       h('span', { class: 'tick' }, st.topics.has(t.name) ? '✓' : ''), h('span', { class: 'nm' }, t.name), h('small', {}, `${t.n}`),
       h('button', { class: 'star' + (t.pinned ? ' on' : ''), title: t.pinned ? 'Unpin this topic' : 'Pin this topic to the top', 'aria-label': (t.pinned ? 'Unpin ' : 'Pin ') + t.name, html: STAR,
         onClick: (e) => { e.stopPropagation(); togglePin(t.name); const top = list.scrollTop; drawTopics(); list.scrollTop = top; } }))),
       items.length ? null : h('div', { class: 'pk-none' }, 'No topic matches'));
   }
+  const poolEntries = () => [...poolByTopic({ choices: st.choices }).values()].flat();
   function drawExample() {
-    const r = st.topics.size ? resolve(cur()) : null;
-    ok.disabled = !r || !r.list.length;
-    if (!r || !r.list.length) { setKids(prev); return; }
-    const e = r.list[st.seed % r.list.length];
+    let e = null, n = 0;
+    if (st.tab === 'pool') { const l = poolEntries(); n = l.length; e = l.length ? l[st.seed % l.length] : null; }
+    else { const r = st.topics.size ? resolve(cur()) : null; n = r ? r.list.length : 0; e = r && r.list.length ? r.list[st.seed % r.list.length] : null; }
+    ok.disabled = !e;
+    if (!e) { setKids(prev); return; }
     let q; try { q = generate(e.key, st.seed); } catch (err) { setKids(prev, 'Could not make an example.'); return; }
     setKids(prev, h('div', { class: 'hint' }, `Example: ${e.type} › ${e.label}`),
       q.stem ? h('div', { html: T(q.stem) }) : null,
@@ -88,25 +136,32 @@ export function openQuickChooser({ title = 'Add a question', confirmLabel = 'Use
   }
   function drawRest() {
     const tops = [...st.topics];
-    tabs.querySelectorAll('button').forEach(b => b.setAttribute('aria-checked', b.dataset.tab === st.tab));
+    tabsEl.querySelectorAll('button').forEach(b => b.setAttribute('aria-checked', b.dataset.tab === st.tab));
     rc = null;
-    if (!tops.length) { setKids(lvBox, h('div', { class: 'hint' }, 'Choose one or more topics.')); setKids(note); drawExample(); return; }
+    if (!tops.length) { setKids(lvBox, h('div', { class: 'hint' }, st.tab === 'pool' ? 'Tick the topics this question can come from.' : 'Choose one or more topics.')); setKids(note); drawExample(); return; }
     if (st.tab === 'quick') {
       setKids(lvBox, levelButtons(tops, st.level, (l) => { st.level = l; st.seed = newSeed(); drawRest(); }));
       const r = resolve(cur());
       setKids(note, `${r.list.length} question option${r.list.length === 1 ? '' : 's'} to draw from.`, r.fell && r.level ? ` Nothing at ${st.level} here, so ${r.level} is used.` : '');
-    } else {
+    } else if (st.tab === 'range') {
       rc = rangeControl(tops, st.lo, st.hi, () => { const g = rc.get(); st.lo = g.lo; st.hi = g.hi; st.seed = newSeed(); drawExample(); });
       const g = rc.get(); st.lo = g.lo; st.hi = g.hi;
       setKids(lvBox, rc.el); setKids(note);
+    } else {
+      const again = () => { st.seed = newSeed(); drawRest(); };
+      setKids(lvBox, h('div', { class: 'pcs' }, st.choices.map(c => choiceCard(c, { open: st.open.has(c.topic), onChange: again,
+        onToggleOpen: () => { st.open.has(c.topic) ? st.open.delete(c.topic) : st.open.add(c.topic); drawRest(); },
+        onRemove: () => { st.topics.delete(c.topic); st.choices = st.choices.filter(x => x !== c); drawTopics(); drawRest(); } }))));
+      const n = poolEntries().length, nt = poolByTopic({ choices: st.choices }).size;
+      setKids(note, `${n} question option${n === 1 ? '' : 's'} across ${nt} topic${nt === 1 ? '' : 's'}.`, nt === 1 ? ' With one topic, ⤮ gives a different question in that topic.' : ' ⤮ always moves to a different topic.');
     }
     drawExample();
   }
-  const ok = h('button', { class: 'btn primary', onClick: () => { if (!st.topics.size) return; m.close(); onDone({ mode: 'query', ...cur() }); } }, confirmLabel);
+  const ok = h('button', { class: 'btn primary', onClick: () => { if (!st.topics.size) return; m.close(); onDone(cur()); } }, confirmLabel);
   const m = modal({ title, wide: true,
     body: h('div', { class: 'qk' },
       h('div', { class: 'qk-left' }, search, list),
-      h('div', { class: 'qk-right' }, h('div', { class: 'qk-tabs' }, h('span', { class: 'pk-col-h' }, 'Choose by'), tabs), lvBox, note, prev)),
+      h('div', { class: 'qk-right' }, h('div', { class: 'qk-tabs' }, h('span', { class: 'pk-col-h' }, 'Choose by'), tabsEl), lvBox, note, prev)),
     footer: [h('button', { class: 'btn', onClick: () => m.close() }, 'Cancel'), onBrowse ? h('button', { class: 'btn', onClick: () => { m.close(); onBrowse(); } }, browseLabel) : null, ok] });
   drawTopics(); drawRest();
   setTimeout(() => search.focus(), 30);

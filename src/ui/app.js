@@ -24,7 +24,7 @@ const findPreset = (id) => STARTER_PRESETS.find(p => p.id === id) || store.prese
 function withTicks(preset) {
   const t = store.ticks[preset.id]; if (!t) return preset;
   const copy = JSON.parse(JSON.stringify(preset));
-  copy.questions.forEach((defs, qi) => defs.forEach((d, si) => { const saved = t[`${qi}.${si}`]; if (saved && d.mode === 'pool') d.candidates = saved.map(c => ({ ...c })); }));
+  copy.questions.forEach((defs, qi) => defs.forEach((d, si) => { const saved = t[`${qi}.${si}`]; if (saved && d.mode === 'pool' && d.candidates) d.candidates = saved.map(c => ({ ...c })); }));
   return copy;
 }
 function finishNew(prep) {

@@ -4,7 +4,8 @@ import { composeQuestion } from '../layout/compose.js';
 import { mathToHTML } from '../layout/render.js';
 import { openPicker } from './picker.js';
 import { openQuickChooser } from './quick.js';
-import { describe, isRange } from '../data/query.js';
+import { describe, isRange, levelOf } from '../data/query.js';
+import { newChoice } from '../data/pools.js';
 import { openPoolDialog, openEditDialog, pickName } from './dialogs.js';
 import { typeById } from '../core/engine.js';
 import * as P from '../data/prep.js';
@@ -25,7 +26,7 @@ const BARS = (on) => `<svg width="16" height="16" viewBox="0 0 16 16" stroke="no
 const ICON_EASIER = BARS(1);
 const ICON_HARDER = BARS(3);
 const ICON_CALC = SV('<rect x="3.2" y="1.8" width="9.6" height="12.4" rx="1.8"/><path d="M5.4 4.9h5.2"/><path d="M5.7 8h.01M8 8h.01M10.3 8h.01M5.7 10.6h.01M8 10.6h.01M10.3 10.6h.01" stroke-width="1.9"/>');
-const poolInfo = (slot) => { const d = slot.def; if (d.mode !== 'pool') return null; const n = (d.candidates || []).filter(c => c.on !== false).length; return { label: d.label || 'Pool', n, text: `${d.label || 'Pool'} · ${n} choice${n === 1 ? '' : 's'}` }; };
+const poolInfo = (slot) => { const d = slot.def; if (d.mode !== 'pool') return null; const n = d.choices ? new Set(d.choices.filter(c => c.enabled !== false).map(c => c.topic)).size : (d.candidates || []).filter(c => c.on !== false).length; return { label: d.label || 'Pool', n, text: `${d.label || 'Pool'} · ${n} choice${n === 1 ? '' : 's'}` }; };
 const fmt = (n) => (Math.round(n * 100) / 100).toString();
 
 function stepper({ value, onChange, step = 1, min = 0, manual = false, title }) {
@@ -157,7 +158,7 @@ function detailPanel(q, qi, slot, si, cq, part) {
         { label: '+ Add a part', onClick: () => addPart(qi) },
         q.slots.length > 1 ? { label: 'Make this its own question', sub: 'Take it out of the multipart question', onClick: () => { const nq = P.splitSlot(prep, qi, si); ctx.ui.sel = nq === null ? null : { q: nq, k: 0 }; ctx.commit(); } } : null,
         { sep: true },
-        isPool ? null : { label: 'Make this a pool…', sub: 'Re-roll picks from several questions you choose', onClick: () => { slot.def = { mode: 'pool', label: 'Pool', candidates: [{ pick: slot.pick, on: true }] }; ctx.commit(); openPoolDialog(slot, qi, si); } },
+        isPool ? null : { label: 'Make this a pool…', sub: 'Re-roll picks from several questions you choose', onClick: () => { const e = P.entryOfPick(slot.pick); slot.def = { mode: 'pool', label: 'Pool', choices: [e ? newChoice(e.topic, levelOf(e)) : { topic: slot.meta.topic, levels: [], off: [], add: [slot.pick] }] }; ctx.commit(); openPoolDialog(slot, qi, si); } },
         isPool ? { label: 'Stop being a pool', sub: 'Re-roll keeps this kind of question', onClick: () => { slot.def = { mode: 'fixed', pick: slot.pick }; ctx.commit(); } } : null,
         anyOpt ? { label: 'Keep this option', sub: 'Stop changing option when you re-roll', onClick: () => { slot.def = { mode: 'fixed', pick: slot.pick }; ctx.commit(); } } : null,
         { sep: true },
@@ -197,12 +198,12 @@ function rerollAll(kind = rerollMode()) {
 function changeSlot(q, qi, slot) {
   const prep = ctx.prep;
   const simple = () => {
-    const def = slot.def.mode === 'query' ? slot.def : P.queryOfPick(slot.pick);
+    const def = slot.def.mode === 'query' || slot.def.mode === 'pool' ? slot.def : P.queryOfPick(slot.pick);
     openQuickChooser({ title: `Choose a question for ${qi + 1}`, confirmLabel: 'Use this question', def, onBrowse: browse,
-      onDone: (d) => { P.setQuery(prep, slot, d, { redraw: true }); ctx.commit(); } });
+      onDone: (d) => { if (d.mode === 'pool') P.setPool(prep, slot, d, { redraw: true }); else P.setQuery(prep, slot, d, { redraw: true }); ctx.commit(); } });
   };
   const browse = () => openPicker({ title: `Choose a question for ${qi + 1}`, current: slot.pick, onSimple: simple, onPick: (c) => { P.applyChoice(slot, c); ctx.commit(); } });
-  if (slot.def.mode === 'query') simple(); else browse();
+  if (slot.def.mode === 'query' || slot.def.mode === 'pool') simple(); else browse();
 }
 function addPart(qi) {
   const prep = ctx.prep, q = prep.questions[qi];

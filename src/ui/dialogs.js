@@ -1,6 +1,8 @@
 import { h, modal, toast, download, setKids, confirmBox } from './dom.js';
 import { ctx } from './state.js';
 import { openPicker } from './picker.js';
+import { openQuickChooser } from './quick.js';
+import { upgradePool } from '../data/pools.js';
 import { mathToHTML } from '../layout/render.js';
 import { typeById, entries } from '../core/engine.js';
 import * as P from '../data/prep.js';
@@ -15,30 +17,10 @@ export function pickName(pick) {
   const v = t.variants.find(x => x.id === vid); return `${t.topic} › ${t.type}${v ? ' › ' + v.label : ''}`;
 }
 
-// Pool choices: tick or untick the candidates; add more from the picker
+// A pool's topics, levels and options: the simple picker opened on its Pool tab
 export function openPoolDialog(slot, qi, si) {
-  const d = slot.def;
-  const area = h('div');
-  const draw = () => {
-    setKids(area, 
-      h('div', { class: 'hint', style: { marginBottom: '8px' } }, 'The question is chosen at random from the ticked choices. A topic is not used twice in one prep. Your ticks are remembered for this preset.'),
-      ...d.candidates.map((c, i) => h('div', { class: 'tickrow' },
-        h('input', { type: 'checkbox', checked: c.on, id: `pc${i}`, onChange: (e) => { c.on = e.target.checked; } }),
-        h('label', { for: `pc${i}`, style: { flex: 1 } }, pickName(c.pick)),
-        h('button', { class: 'btn small ghost', title: 'Remove from this pool', onClick: () => { d.candidates.splice(i, 1); draw(); } }, '✕'))),
-      h('div', { class: 'addrow' }, h('button', { class: 'btn small', onClick: () => openPicker({ title: 'Add a choice to the pool', confirmLabel: 'Add to pool', onPick: ({ pick, scope }) => { for (const sc of (scope && scope.length ? scope : [pick])) if (!d.candidates.some(c => c.pick === sc)) d.candidates.push({ pick: sc, on: true }); draw(); } }) }, '+ Add a choice')),
-      h('div', { class: 'hint', style: { marginTop: '6px' } }, 'In the picker, choose a topic or type and leave Options on “Any” to add all its options, or pick one option to add just that.'));
-  };
-  draw();
-  const m = modal({ title: `Pool for question ${qi + 1}`, narrow: true, body: area, footer: [
-    h('button', { class: 'btn', onClick: () => m.close() }, 'Close'),
-    h('button', { class: 'btn primary', onClick: () => { rememberTicks(); P.rerollSlot(ctx.prep, slot); m.close(); ctx.commit(); } }, 'Save and pick again')] });
-  function rememberTicks() {
-    const id = ctx.prep.presetId;
-    if (!id) return;
-    ctx.store.ticks[id] = ctx.store.ticks[id] || {};
-    ctx.store.ticks[id][`${qi}.${si}`] = d.candidates.map(c => ({ pick: c.pick, on: c.on }));
-  }
+  openQuickChooser({ title: `Pool for question ${qi + 1}`, confirmLabel: 'Save pool', def: upgradePool(slot.def), tabs: ['pool'],
+    onDone: (d) => { P.setPool(ctx.prep, slot, d); ctx.commit(); } });
 }
 
 // Edit this question's wording / answer for this prep only
@@ -128,7 +110,7 @@ export function openSavePreset() {
   footer: [h('button', { class: 'btn', onClick: () => m.close() }, 'Cancel'), h('button', { class: 'btn primary', onClick: () => {
     const nm = name.value.trim(); if (!nm) return;
     const slotDef = (s) => {
-      const base = s.def.mode === 'pool' ? { mode: 'pool', label: s.def.label, candidates: s.def.candidates.map(c => ({ ...c })) } : s.def.mode === 'query' ? JSON.parse(JSON.stringify(s.def)) : { mode: 'fixed', pick: s.def.pick || s.pick };
+      const base = s.def.mode === 'pool' ? JSON.parse(JSON.stringify({ mode: 'pool', label: s.def.label, poolId: s.def.poolId, ...(s.def.choices ? { choices: s.def.choices } : { candidates: s.def.candidates }) })) : s.def.mode === 'query' ? JSON.parse(JSON.stringify(s.def)) : { mode: 'fixed', pick: s.def.pick || s.pick };
       base.marks = s.marks.slice(); base.lines = s.lines.slice();
       return base;
     };

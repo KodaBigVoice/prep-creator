@@ -3,6 +3,7 @@ import { makeRng, newSeed } from '../core/rng.js';
 import { generate, parsePick, typeById, TYPES, defaultFlags, canon } from '../core/engine.js';
 import { setById, defaultRubric } from './sets.js';
 import { avoidFor, newAvoid, sceneOfSlot, clash, CLASHES } from './fresh.js';
+import { poolByTopic, poolChoices, choiceOptions, upgradePool } from './pools.js';
 import { resolve, step, ladder, topicsOf, levelOf, byKey, isRange } from './query.js';
 
 let _id = 0;
@@ -35,10 +36,10 @@ function fillSnapshot(slot) {
 }
 
 // def: the preset slot (fixed or pool); usedTopics: topics already in this prep
-export function makeSlot(def, usedTopics = new Set(), rng = makeRng(newSeed()), keys = new Set(), avoid = null) {
+export function makeSlot(def, usedTopics = new Set(), rng = makeRng(newSeed()), keys = new Set(), avoid = null, opts = {}) {
   const slot = { id: uid(), def: JSON.parse(JSON.stringify(def)), seed: newSeed(), locked: false, flags: null, edits: null };
-  choosePick(slot, usedTopics, rng, keys);
-  freshen(slot, avoid, () => { slot.seed = newSeed(); choosePick(slot, usedTopics, rng, keys); });
+  choosePick(slot, usedTopics, rng, keys, opts);
+  freshen(slot, avoid, () => { slot.seed = newSeed(); choosePick(slot, usedTopics, rng, keys, opts); });
   return fillSnapshot(slot);
 }
 // The fresh-scenario rule (soft): try a few other questions or numbers, keep the first that does not retell a recent story, else the least similar
@@ -54,27 +55,58 @@ export function freshen(slot, avoid, retry) {
   slot.pick = best.pick; slot.seed = best.seed;
 }
 const addScene = (avoid, slot) => { sceneOfSlot(slot).forEach(w => avoid.words.add(w)); avoid.keys.add(slot.pick); };
-function choosePick(slot, usedTopics, rng, usedKeys = new Set()) {
+// opts.leaveTopic: the topic it has now (a shuffle must leave it when there is another to go to); opts.mates: topics taken by the other questions of the same shared pool
+function choosePick(slot, usedTopics, rng, usedKeys = new Set(), opts = {}) {
   const d = slot.def;
   if (d.mode === 'fixed') { slot.pick = resolvePick(d.pick, rng); return; }
-  if (d.mode === 'query') { slot.pick = chooseFromQuery(d, rng, usedKeys, slot.pick, usedTopics); return; }
+  if (d.mode === 'query') { slot.pick = chooseFromQuery(d, rng, usedKeys, slot.pick, usedTopics, opts); return; }
+  if (d.choices || !d.candidates) { slot.pick = chooseFromPool(d, rng, usedKeys, slot.pick, usedTopics, opts); return; }
   const on = d.candidates.filter(c => c.on);
   const pool = on.length ? on : d.candidates;
-  let fresh = pool.filter(c => !usedTopics.has(topicOfPick(c.pick)));
+  const tier = (pred) => pool.filter(pred);
+  const T = (c) => topicOfPick(c.pick);
+  let fresh = tier(c => !usedTopics.has(T(c)) && T(c) !== opts.leaveTopic);
+  if (!fresh.length) fresh = tier(c => T(c) !== opts.leaveTopic);
+  if (!fresh.length) fresh = tier(c => !usedTopics.has(T(c)));
   if (!fresh.length) fresh = pool;
   slot.pick = resolvePick(rng.pick(fresh).pick, rng);
 }
+// Choose a topic: not the one it is leaving, not one taken by another question of the same pool, preferably one not yet on the prep
+function chooseTopic(topics, rng, usedTopicSet, opts) {
+  const mates = opts.mates || new Set(), leave = opts.leaveTopic;
+  const tiers = [
+    (t) => t !== leave && !mates.has(t) && !usedTopicSet.has(t),
+    (t) => t !== leave && !mates.has(t),
+    (t) => t !== leave,
+    () => true,
+  ];
+  for (const f of tiers) { const c = topics.filter(f); if (c.length) return rng.pick(c); }
+  return rng.pick(topics);
+}
+function chooseFromPool(d, rng, usedKeys, current, usedTopicSet = new Set(), opts = {}) {
+  const by = poolByTopic(d);
+  if (!by.size) {                       // everything switched off: fall back to every choice
+    const all = new Map(); for (const c of poolChoices(d)) { const l = choiceOptions(c); if (l.length) all.set(c.topic, [...(all.get(c.topic) || []), ...l]); }
+    if (!all.size) throw new Error('This pool has no questions in it.');
+    by.clear(); all.forEach((v, k) => by.set(k, v));
+  }
+  const topic = chooseTopic([...by.keys()], rng, usedTopicSet, opts);
+  const list = by.get(topic);
+  let c = list.filter(e => !usedKeys.has(e.key) && e.key !== current);
+  if (!c.length) c = list.filter(e => e.key !== current);
+  if (!c.length) c = list;
+  return rng.pick(c).key;
+}
 
 // A query slot draws any option that fits the description; options already on this prep (and the one it had) are avoided when there is a choice
-function chooseFromQuery(d, rng, usedKeys, current, usedTopicSet = new Set()) {
+function chooseFromQuery(d, rng, usedKeys, current, usedTopicSet = new Set(), opts = {}) {
   let { list } = resolve(d);
   if (!list.length) list = ladder(topicsOf(d));
   if (!list.length) throw new Error('No questions match ' + JSON.stringify(d));
   // several topics: choose a topic first (one not already on the prep if possible), so a big topic does not crowd out the others
   const topics = [...new Set(list.map(e => e.topic))];
   if (topics.length > 1) {
-    const fresh = topics.filter(t => !usedTopicSet.has(t));
-    const t = rng.pick(fresh.length ? fresh : topics);
+    const t = chooseTopic(topics, rng, usedTopicSet, opts);
     list = list.filter(e => e.topic === t);
   }
   let c = list.filter(e => !usedKeys.has(e.key) && e.key !== current);
@@ -88,12 +120,24 @@ export const usedKeys = (prep, exceptSlotId = null) => {
   return s;
 };
 
+// A preset slot that names a shared pool gets that pool's choices copied in, so a prep never depends on the preset after it is made
+export function resolveDef(preset, d) {
+  if (d.mode !== 'pool' || !d.poolId) return d;
+  const pool = (preset.pools || []).find(p => p.id === d.poolId);
+  if (!pool) return d;
+  return { ...d, label: pool.name, choices: JSON.parse(JSON.stringify(pool.choices)) };
+}
 export function prepFromPreset(preset, setId, name, rng = makeRng(newSeed())) {
   const set = setById[setId];
-  const used = new Set(), keys = new Set(), avoid = newAvoid();
+  const used = new Set(), keys = new Set(), avoid = newAvoid(), taken = new Map();       // taken: poolId -> topics already drawn from that shared pool
   const questions = preset.questions.map((defs) => ({
     id: uid(),
-    slots: defs.map((d) => { const s = makeSlot(d, used, rng, keys, avoid); used.add(s.meta.topic); keys.add(s.pick); addScene(avoid, s); return s; }),
+    slots: defs.map((d0) => {
+      const d = resolveDef(preset, d0), mates = d.poolId ? (taken.get(d.poolId) || taken.set(d.poolId, new Set()).get(d.poolId)) : new Set();
+      const s = makeSlot(d, used, rng, keys, avoid, { mates });
+      used.add(s.meta.topic); keys.add(s.pick); addScene(avoid, s); if (d.poolId) mates.add(s.meta.topic);
+      return s;
+    }),
   }));
   return newPrep({ set: setId, name, minutes: preset.minutes ?? set.minutes, presetId: preset.id, rubricText: preset.rubricText, questions });
 }
@@ -107,14 +151,23 @@ export const usedTopics = (prep, exceptSlotId = null) => {
   return s;
 };
 
-// re-roll: same type, new numbers (pool slots choose again)
+// topics already drawn by the other questions that share this slot's pool
+export function matesOf(prep, slot) {
+  const m = new Set(); if (!slot.def.poolId) return m;
+  prep.questions.forEach(q => q.slots.forEach(sl => { if (sl.id !== slot.id && sl.def.poolId === slot.def.poolId && sl.meta) m.add(sl.meta.topic); }));
+  return m;
+}
+// ⤮ a different question. Pools and multi-topic questions move to a different topic when there is one.
+
 export function rerollSlot(prep, slot) {
   if (slot.locked) return slot;
   slot.edits = null;
+  const from = slot.meta && slot.meta.topic, mates = matesOf(prep, slot);
   const roll = () => {
     slot.seed = newSeed();
-    if (slot.def.mode === 'pool') choosePick(slot, usedTopics(prep, slot.id), makeRng(newSeed()));
-    else if (slot.def.mode === 'query') choosePick(slot, usedTopics(prep, slot.id), makeRng(newSeed()), usedKeys(prep, slot.id));
+    const o = { leaveTopic: from, mates };
+    if (slot.def.mode === 'pool') choosePick(slot, usedTopics(prep, slot.id), makeRng(newSeed()), usedKeys(prep, slot.id), o);
+    else if (slot.def.mode === 'query') choosePick(slot, usedTopics(prep, slot.id), makeRng(newSeed()), usedKeys(prep, slot.id), o);
     else if (slot.def.pick && slot.def.pick.endsWith(':*')) {      // "any option of this type": roll a different option where there is one
       const r = makeRng(newSeed()); const old = slot.pick; let next = resolvePick(slot.def.pick, r);
       for (let i = 0; i < 6 && next === old && typeById[canon(slot.def.pick.slice(0, -2))].variants.length > 1; i++) next = resolvePick(slot.def.pick, r);
@@ -125,7 +178,6 @@ export function rerollSlot(prep, slot) {
   freshen(slot, avoidFor(prep, slot.id), roll);
   return fillSnapshot(slot);
 }
-// next/previous variant while choosing by hand: keeps the type, changes the numbers
 // same question, new numbers (steering clear of a recent story where it can)
 export function renumber(prep, slot) {
   if (slot.locked) return slot;
@@ -164,6 +216,20 @@ export function setQuery(prep, slot, def, { redraw = false } = {}) {
   choosePick(slot, usedTopics(prep, slot.id), makeRng(newSeed()), usedKeys(prep, slot.id));
   slot.seed = newSeed();
   freshen(slot, avoidFor(prep, slot.id), () => { slot.seed = newSeed(); choosePick(slot, usedTopics(prep, slot.id), makeRng(newSeed()), usedKeys(prep, slot.id)); });
+  return fillSnapshot(slot);
+}
+// Make a slot a pool (or change its pool). A new question is drawn only if the one it has no longer fits, or when asked.
+export function setPool(prep, slot, def, { redraw = false } = {}) {
+  const od = slot.def, old = slot.pick;
+  slot.def = { mode: 'pool', ...def }; upgradePool(slot.def);
+  if (od && od.marks && !slot.def.marks) slot.def.marks = od.marks;
+  if (od && od.lines && !slot.def.lines) slot.def.lines = od.lines;
+  const fits = [...poolByTopic(slot.def).values()].some(l => l.some(e => e.key === old));
+  if (!redraw && fits) return slot;
+  slot.edits = null; slot.marksManual = []; slot.linesManual = []; slot.flags = null;
+  const from = slot.meta && slot.meta.topic;
+  choosePick(slot, usedTopics(prep, slot.id), makeRng(newSeed()), usedKeys(prep, slot.id), { leaveTopic: redraw ? from : undefined, mates: matesOf(prep, slot) });
+  slot.seed = newSeed();
   return fillSnapshot(slot);
 }
 export const entryOfPick = (pick) => { const p = parsePick(String(pick).replace(/:\*$/, '')); return p ? byKey()[`${p.t.id}:${p.v.id}`] || null : null; };
