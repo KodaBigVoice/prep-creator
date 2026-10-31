@@ -25,7 +25,7 @@ const findPreset = (id) => STARTER_PRESETS.find(p => p.id === id) || store.prese
 function withTicks(preset) {
   const t = store.ticks[preset.id]; if (!t) return preset;
   const copy = JSON.parse(JSON.stringify(preset));
-  copy.questions.forEach((defs, qi) => defs.forEach((d, si) => { const saved = t[`${qi}.${si}`]; if (saved && d.mode === 'pool' && d.candidates) d.candidates = saved.map(c => ({ ...c })); }));
+  copy.questions.forEach((defs, qi) => (Array.isArray(defs) ? defs : []).forEach((d, si) => { const saved = t[`${qi}.${si}`]; if (saved && d.mode === 'pool' && d.candidates) d.candidates = saved.map(c => ({ ...c })); }));
   return copy;
 }
 function finishNew(prep) {
@@ -103,9 +103,11 @@ function useSet(setId, presetId = undefined) {
   store.settings.lastSet = setId;
   const list = presetsFor(setId);
   const preset = presetId ? findPreset(presetId) : list[0];
-  if (preset) ctx.prep = finishNew(P.prepFromPreset(withTicks(preset), setId, 'x'));
-  if (preset && P.prepFromPreset.problems && P.prepFromPreset.problems.length) { const n = P.prepFromPreset.problems.length; setTimeout(() => toast(`${n} part${n === 1 ? '' : 's'} of “${preset.name}” could not be built because a question or topic it names no longer exists, so ${n === 1 ? 'it was' : 'they were'} left out. Edit the preset to fix it.`, 9000), 300); }
-  else ctx.prep = finishNew(P.newPrep({ set: setId, name: 'x', minutes: set.minutes }));
+  if (preset) {
+    ctx.prep = finishNew(P.prepFromPreset(withTicks(preset), setId, 'x'));
+    const probs = P.prepFromPreset.problems || [];
+    if (probs.length) { const n = probs.length; setTimeout(() => toast(`${n} part${n === 1 ? '' : 's'} of “${preset.name}” could not be built because a question or topic it names no longer exists, so ${n === 1 ? 'it was' : 'they were'} left out. Edit the preset to fix it.`, 9000), 300); }
+  } else ctx.prep = finishNew(P.newPrep({ set: setId, name: 'x', minutes: set.minutes }));
   ctx.prep.presetId = preset ? preset.id : null;
   ctx.dirty = false; afterLoad();
 }

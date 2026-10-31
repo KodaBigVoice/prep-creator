@@ -346,3 +346,8 @@ body.resizing{cursor:col-resize;user-select:none}
 .pc-shared .fl{display:flex;align-items:center;gap:10px}
 .pc-shared .fl select,.pc-shared .fl input[type=text]{flex:1;min-width:0}
 .linknote{margin:4px 0 6px;color:var(--accent)}
+/* versions of a question */
+.vers{display:inline-flex;align-items:center;gap:4px;margin-left:10px}
+.vchip{min-width:24px;height:22px;padding:0 6px;border:1px solid var(--line,#cfd5e3);background:#fff;border-radius:11px;font:inherit;font-size:12px;cursor:pointer;color:var(--ink)}
+.vchip:hover{border-color:var(--accent)}
+.vchip.on{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}

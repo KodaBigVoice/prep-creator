@@ -9,7 +9,7 @@ import { newChoice } from '../data/pools.js';
 import { openPoolDialog, openEditDialog, pickName } from './dialogs.js';
 import { typeById } from '../core/engine.js';
 import * as P from '../data/prep.js';
-import { sharedFor, setSlotPool, addFromDef, addPartFromDef, ruleText, poolUsers, linkWithAbove, unlinkSlot, linkedWith, toPool, duplicateQuestion } from '../data/presetdraft.js';
+import { sharedFor, setSlotPool, addFromDef, addPartFromDef, ruleText, poolUsers, linkWithAbove, unlinkSlot, linkedWith, toPool, duplicateQuestion, switchVersion, addVersion, removeVersion, versionSummary } from '../data/presetdraft.js';
 const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
 const ICON_UP = '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 2.5h10M8 13.5V6M4.8 8.7 8 5.5l3.2 3.2"/></svg>';
@@ -76,6 +76,7 @@ export function renderBuilder(root) {
     const card = h('div', { class: 'q-card' + (isSel ? ' sel' : '') },
       h('div', { class: 'q-head' }, h('span', { class: 'n' }, `${qi + 1}.`), h('span', { class: 'hint' }, `${cq.marks} mark${cq.marks === 1 ? '' : 's'}`),
         q.slots.some(s => s.locked) ? h('span', { class: 'lockmark', title: 'Locked', html: ICON_LOCK }) : null,
+        versionBar(q, qi),
         h('span', { class: 'sp' }),
         h('span', { class: 'acts' },
           h('button', { class: 'iconbtn', title: 'Make this a further part of the question above', disabled: qi === 0, html: ICON_UP, onClick: () => joinQuestion(qi, -1) }),
@@ -112,6 +113,25 @@ export function renderBuilder(root) {
     h('button', { class: 'btn', onClick: addSimple }, '+ Add question'),
     h('button', { class: 'btn', title: 'Choose one exact question from the full list', style: { flex: '0 0 auto', width: 'auto' }, onClick: browseAdd }, 'Browse all…')));
 }
+// A question that has versions (say a two-part BIDMAS question OR a Substitution question) shows which one it is; click another to switch.
+function versionBar(q, qi) {
+  const prep = ctx.prep;
+  if (!q.versions || q.versions.length < 2) return null;
+  const go = (vi) => {
+    if (vi === q.version) return;
+    try { switchVersion(prep, qi, vi); ctx.ui.sel = { q: qi, k: 0 }; ctx.commit(); } catch (e) { toast(e.message, 6000); }
+  };
+  return h('span', { class: 'vers', role: 'group', 'aria-label': 'Versions of this question' },
+    h('span', { class: 'hint' }, 'Version'),
+    q.versions.map((v, i) => h('button', { class: 'vchip' + (i === q.version ? ' on' : ''), 'aria-pressed': i === q.version ? 'true' : 'false',
+      title: `${i === q.version ? 'Showing: ' : 'Switch to: '}${versionSummary(i === q.version ? q.slots.map(s => s.def) : v)}`, onClick: () => go(i) }, String(i + 1))));
+}
+function addVersionTo(qi) {
+  const prep = ctx.prep;
+  openQuickChooser({ title: `Another version of question ${qi + 1}`, confirmLabel: 'Add version', onBrowse: null, shared: sharedFor(prep),
+    note: 'Version rules: a prep made from this preset shows just one of the versions of this question, chosen at random. You can add further parts to this version afterwards, with + Add a part.',
+    onDone: (def) => { try { addVersion(prep, qi, def); ctx.ui.sel = { q: qi, k: 0 }; ctx.commit(); toast(`Question ${qi + 1} now has ${prep.questions[qi].versions.length} versions. Use the numbers beside the question number to move between them.`, 7000); } catch (e) { toast(e.message, 6000); } } });
+}
 function addSimple() {
   const prep = ctx.prep;
   openQuickChooser({ title: 'Add a question', confirmLabel: 'Add question', onBrowse: browseAdd,
@@ -129,6 +149,10 @@ function pickParts(pick, anyOption) {
   if (anyOption || vid === '*') return [t.topic, `${t.type} › any option`];
   const v = t.variants.find(x => x.id === vid);
   return [t.topic, `${t.type}${v ? ' › ' + v.label : ''}`];
+}
+function sameTopic(slot) {
+  if (!P.rerollInTopic(ctx.prep, slot)) { toast(`Only one question is allowed for ${slot.meta.topic} here. Tick more options for it in the pool to get a choice.`, 6000); return; }
+  ctx.commit();
 }
 function nudge(slot, dir) {
   if (!P.nudgeSlot(ctx.prep, slot, dir)) { toast(dir > 0 ? 'That is the hardest question available here.' : 'That is the easiest question available here.'); return; }
@@ -162,13 +186,16 @@ function detailPanel(q, qi, slot, si, cq, part) {
     h('div', { class: 'dbtns' },
       h('div', { class: 'abar' },
         abtn(ICON_EASIER, 'Easier', () => nudge(slot, -1), 'An easier question on the same topic', !P.canNudge(slot, -1)),
-        abtn(ICON_HARDER, 'Harder', () => nudge(slot, 1), 'A harder question on the same topic', !P.canNudge(slot, 1))),
+        abtn(ICON_HARDER, 'Harder', () => nudge(slot, 1), 'A harder question on the same topic', !P.canNudge(slot, 1)),
+        P.canSameTopic(slot) ? abtn(ICON_SHUFFLE, 'Same topic', () => sameTopic(slot), `Keep the topic (${slot.meta.topic}) and draw a different question from the options allowed for it`) : null),
       h('div', { class: 'abar' },
       abtn(ICON_SWAP, 'Replace', () => changeSlot(q, qi, slot), 'Swap this for a different question'),
       abtn(ICON_EDIT, 'Edit', () => openEditDialog(slot, () => ctx.commit()), 'Change the wording or the answer'),
       h('button', { class: 'abtn', title: 'More options', 'data-menu-anchor': '', onClick: (e) => showMenu(e.currentTarget, [
         { label: '+ Add a part', onClick: () => addPart(qi) },
         { label: 'Duplicate this question', sub: 'Same topics, options and pools; a fresh sample', onClick: () => { duplicateQuestion(prep, qi); ctx.ui.sel = { q: qi + 1, k: 0 }; ctx.commit(); toast(`Question ${qi + 1} copied as question ${qi + 2}.`, 4000, { label: 'Undo', onClick: () => ctx.undo() }); } },
+        prep.draft ? { label: 'Add another version of this question…', sub: 'It will be this question OR the new one, chosen at random for each prep', onClick: () => addVersionTo(qi) } : null,
+        prep.draft && q.versions && q.versions.length > 1 ? { label: 'Remove this version', sub: `Delete version ${q.version + 1} of ${q.versions.length}`, onClick: async () => { if (!(await confirmBox({ title: `Remove version ${q.version + 1}?`, message: 'This version of the question is removed from the preset. You can bring it back with Undo.', confirmLabel: 'Remove', danger: true }))) return; removeVersion(prep, qi); ctx.ui.sel = { q: qi, k: 0 }; ctx.commit(); } } : null,
         q.slots.length > 1 ? { label: 'Make this its own question', sub: 'Take it out of the multipart question', onClick: () => { const nq = P.splitSlot(prep, qi, si); ctx.ui.sel = nq === null ? null : { q: nq, k: 0 }; ctx.commit(); } } : null,
         { sep: true },
         prep.draft && si > 0 && !(slot.def.link && q.slots[si - 1].def.link === slot.def.link) ? { label: 'Link with the part above', sub: 'One topic decision for both; each part keeps its own options', onClick: () => { linkWithAbove(prep, q, si); ctx.commit(); toast('Linked. Open each part’s pool (the pool icon) to choose the topics and the options for that part.', 6000); } } : null,

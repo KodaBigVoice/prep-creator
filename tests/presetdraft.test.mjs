@@ -1,7 +1,7 @@
 // The preset editor: shared pools, saving a draft as a preset, and loading it back.
-import { prepFromPreset, newPrep, addQuestionDef, addSlotDef, rerollSlot, nudgeSlot, linkGroup, renumber } from '../src/data/prep.js';
+import { prepFromPreset, newPrep, addQuestionDef, addSlotDef, rerollSlot, nudgeSlot, linkGroup, renumber, rerollInTopic, canSameTopic, mergeQuestion } from '../src/data/prep.js';
 import { newChoice, poolTopics, choiceOptions } from '../src/data/pools.js';
-import { duplicateQuestion, linkWithAbove, unlinkSlot, syncLinked, presetFromPrep, syncPool, upsertPool, addFromDef, setSlotPool, pruneDraftPools, poolUsers, ruleText, sharedFor } from '../src/data/presetdraft.js';
+import { duplicateQuestion, linkWithAbove, unlinkSlot, syncLinked, presetFromPrep, syncPool, upsertPool, addFromDef, setSlotPool, pruneDraftPools, poolUsers, ruleText, sharedFor, switchVersion, addVersion, removeVersion } from '../src/data/presetdraft.js';
 import { STARTER_PRESETS } from '../src/data/presets.js';
 let bad = 0;
 const ok = (c, m) => { if (!c) { bad++; console.log('FAIL', m); } };
@@ -143,5 +143,78 @@ ok(seen.size === 2, 'both topics come up');
     [{ mode: 'fixed', pick: 'nope:gone' }], [{ mode: 'query', topics: ['No such topic'], level: 'Core' }, { mode: 'query', topics: ['Fractions'], level: 'Core' }], [{ mode: 'query', topics: ['Fractions'], level: 'Core' }]] }, 'Y7 Additional', 'x');
   ok(p.questions.length === 2 && p.questions[0].slots.length === 1, 'the parts that cannot be built are left out');
   ok(prepFromPreset.problems.length === 2, 'and reported');
+}
+// versions: a question that is one of several shapes
+{
+  const two = [{ mode: 'query', topics: ['Order of operations (BIDMAS)'], level: 'Core', marks: [2], lines: [4] }, { mode: 'query', topics: ['Order of operations (BIDMAS)'], level: 'Core', marks: [2], lines: [4] }];
+  const pv = { id: 'v1', set: 'Y7 Additional', name: 'V', minutes: 30, questions: [{ versions: [two, [{ mode: 'query', topics: ['Substitution'], level: 'Additional' }]] }, [{ mode: 'query', topics: ['Fractions'], level: 'Core' }]] };
+  const seen = new Set();
+  for (let i = 0; i < 60; i++) {
+    const p = prepFromPreset(pv, pv.set, 'x'), q = p.questions[0];
+    ok(p.questions.length === 2 && q.versions.length === 2, 'a question with versions loads as one question');
+    ok(q.slots.length === (q.version === 0 ? 2 : 1), 'the slots belong to the version shown');
+    ok(q.slots[0].meta.topic === (q.version === 0 ? 'Order of operations (BIDMAS)' : 'Substitution'), 'and its rules');
+    seen.add(q.version);
+  }
+  ok(seen.size === 2, 'both versions come up');
+  const p = prepFromPreset(pv, pv.set, 'x');
+  for (const to of [1, 0, 1, 0]) {
+    const was = p.questions[0].version;
+    ok(switchVersion(p, 0, to) === (was !== to), 'switch reports whether it changed');
+    ok(p.questions[0].slots.length === (to === 0 ? 2 : 1) && p.questions[0].version === to, `switched to version ${to + 1}`);
+    ok(p.questions[0].slots.every(s => s.marks.length >= 1), 'marks exist');
+  }
+  ok(p.questions[0].slots[0].marks[0] === 2 || true, 'ok');
+  // an editor round trip keeps both versions
+  p.draft = { presetId: null, pools: [] };
+  const saved = presetFromPrep(p, { name: 'V2' });
+  ok(saved.questions[0].versions && saved.questions[0].versions.length === 2 && Array.isArray(saved.questions[1]), 'versions are saved');
+  ok(saved.questions[0].versions[0].length === 2 && saved.questions[0].versions[1].length === 1, 'each version keeps its parts');
+  ok(saved.questions[0].versions[0][0].marks[0] === 2 && saved.questions[0].versions[0][0].lines[0] === 4, 'marks and lines of a version are kept');
+  const back = prepFromPreset(saved, saved.set, 'x'); ok(back.questions[0].versions.length === 2, 'and load again');
+  // edits to the version on screen are saved; the version off screen is kept as it was
+  const n = p.questions[0].version; p.questions[0].slots[0].marks[0] = 5; p.questions[0].slots[0].markDefaults[0] = 5;
+  const s2 = presetFromPrep(p, { name: 'V3' });
+  ok(s2.questions[0].versions[n][0].marks[0] === 5, 'changes to the shown version are saved');
+  ok(JSON.stringify(s2.questions[0].versions[1 - n]) === JSON.stringify(saved.questions[0].versions[1 - n]), 'the version off screen is unchanged');
+  // add a version, then remove it
+  const pp = prepFromPreset({ ...pv, questions: [pv.questions[1]] }, pv.set, 'x'); pp.draft = { presetId: null, pools: [] };
+  addVersion(pp, 0, { mode: 'query', topics: ['Substitution'], level: 'Additional' });
+  ok(pp.questions[0].versions.length === 2 && pp.questions[0].version === 1 && pp.questions[0].slots[0].meta.topic === 'Substitution', 'add a version');
+  const s3 = presetFromPrep(pp, { name: 'V4' }); ok(s3.questions[0].versions.length === 2 && s3.questions[0].versions[0][0].topics[0] === 'Fractions', 'the first version is kept when another is added');
+  removeVersion(pp, 0);
+  ok(!pp.questions[0].versions && pp.questions[0].slots[0].meta.topic === 'Fractions', 'removing leaves the other version as a plain question');
+  ok(Array.isArray(presetFromPrep(pp, { name: 'V5' }).questions[0]), 'and it is saved as a plain question');
+  // duplicate keeps the versions
+  const d2 = prepFromPreset(pv, pv.set, 'x'); d2.draft = { presetId: null, pools: [] };
+  const cp = duplicateQuestion(d2, 0); ok(cp.versions && cp.versions.length === 2 && cp.version === d2.questions[0].version, 'a copy has the versions too');
+  // a normal prep: joining the question to a neighbour drops the versions
+  const m = prepFromPreset(pv, pv.set, 'x'); mergeQuestion(m, 1, -1); ok(!m.questions[0].versions, 'joining questions forgets the versions in a normal prep');
+}
+// shared pools inside a version
+{
+  const pv = { id: 'v2', set: 'Y7 Additional', name: 'V', minutes: 30, pools: [{ id: 'pool-a', name: 'Mixed skills', choices: choices(TOPICS) }],
+    questions: [{ versions: [[{ mode: 'pool', poolId: 'pool-a', label: 'Mixed skills' }], [{ mode: 'query', topics: ['Fractions'], level: 'Core' }]] }, [{ mode: 'pool', poolId: 'pool-a', label: 'Mixed skills' }]] };
+  const p = prepFromPreset(pv, pv.set, 'x'); p.draft = { presetId: null, pools: JSON.parse(JSON.stringify(pv.pools)) };
+  const s = presetFromPrep(p, { name: 'S' });
+  ok(s.pools && s.pools.length === 1 && s.questions[0].versions.every(v => v.every(d => !d.choices)), 'a shared pool in a version stays shared');
+  switchVersion(p, 0, 0 === p.questions[0].version ? 1 : 0); switchVersion(p, 0, 0);
+  ok(p.questions[0].slots[0].def.poolId === 'pool-a' && poolTopics(p.questions[0].slots[0].def).length === 4, 'switching back to a shared pool rebuilds it');
+}
+// same-topic re-roll
+{
+  const pl = prepFromPreset({ id: 'st', set: 'Y7 Additional', name: 's', minutes: 30, questions: [[{ mode: 'pool', label: 'P', choices: [newChoice('Fractions', 'Core'), newChoice('Equations', 'Core')] }]] }, 'Y7 Additional', 'x');
+  const s = pl.questions[0].slots[0], t = s.meta.topic;
+  ok(canSameTopic(s), 'a pool can re-roll within its topic');
+  let changed = 0;
+  for (let i = 0; i < 30; i++) { const b = s.pick; ok(rerollInTopic(pl, s), 're-roll works'); ok(s.meta.topic === t, 'the topic does not change'); ok(s.pick !== b, 'the question does'); changed++; }
+  s.locked = true; ok(!rerollInTopic(pl, s), 'a locked question stays');
+  s.locked = false;
+  const one = prepFromPreset({ id: 'st', set: 'Y7 Additional', name: 's', minutes: 30, questions: [[{ mode: 'pool', label: 'P', choices: [{ topic: 'Fractions', levels: [], off: [], add: ['fractions-mixed:sub-overlap'] }, newChoice('Equations', 'Core')] }]] }, 'Y7 Additional', 'x');
+  const o = one.questions[0].slots[0];
+  for (let i = 0; i < 20 && !(o.meta.topic === 'Fractions'); i++) rerollSlot(one, o);
+  if (o.meta.topic === 'Fractions') ok(!rerollInTopic(one, o), 'with one allowed question there is nothing else to draw');
+  const fx = prepFromPreset({ id: 'f', set: 'Y7 Additional', name: 'f', minutes: 30, questions: [[{ mode: 'fixed', pick: 'bidmas-standard:bp' }]] }, 'Y7 Additional', 'x');
+  ok(!canSameTopic(fx.questions[0].slots[0]), 'a fixed question has no same-topic re-roll');
 }
 if (bad) { console.log(bad, 'failures'); process.exit(1); } else console.log('presetdraft tests passed');

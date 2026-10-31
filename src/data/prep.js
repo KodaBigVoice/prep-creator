@@ -149,7 +149,15 @@ export function linkGroup(prep, slot) {
 // Draw one question's slots from its rule definitions. `state` carries what is already on the prep: topics and questions used, recent stories to avoid,
 // and the topics already drawn from each shared pool.
 export function newDrawState() { return { used: new Set(), keys: new Set(), avoid: newAvoid(), taken: new Map(), problems: [] }; }
-export function drawQuestion(preset, defs, state, rng = makeRng(newSeed())) {
+// A preset question is a list of part rules, or { versions: [list, list, ...] }: one of the versions is drawn (or the one asked for).
+export const versionsOf = (pq) => (Array.isArray(pq) ? [pq] : (pq && pq.versions) || []);
+export function drawQuestion(preset, pq, state, rng = makeRng(newSeed()), only = null) {
+  const vers = versionsOf(pq), vi = only !== null && vers[only] ? only : vers.length > 1 ? Math.floor(rng.next() * vers.length) : 0, defs = vers[vi] || [];
+  const q = drawVersion(preset, defs, state, rng);
+  if (vers.length > 1) { q.versions = vers.map(v => v.map(d => JSON.parse(JSON.stringify(resolveDef(preset, d))))); q.version = vi; }
+  return q;
+}
+function drawVersion(preset, defs, state, rng) {
   const { used, keys, avoid, taken } = state;
   const gt = new Map();                                                              // link -> the topic drawn for those linked parts
   return {
@@ -234,6 +242,25 @@ export function rerollSlot(prep, slot) {
   roll();
   freshen(slot, avoidFor(prep, slot.id), roll);
   return fillSnapshot(slot);
+}
+// ⤮ keeps moving between topics. This one stays in the topic it has and draws another question from the options the pool (or Quick rule) allows there.
+function topicOptions(slot) {
+  const topic = slot.meta && slot.meta.topic, d = slot.def; if (!topic) return [];
+  if (d.mode === 'pool') return poolByTopic(d).get(topic) || [];
+  if (d.mode === 'query') return resolve(d).list.filter(e => e.topic === topic);
+  return [];
+}
+export const canSameTopic = (slot) => !slot.locked && (slot.def.mode === 'pool' || (slot.def.mode === 'query' && new Set(resolve(slot.def).list.map(e => e.topic)).size > 1));
+export const sameTopicOptions = (slot) => topicOptions(slot).filter(e => e.key !== slot.pick).length;
+export function rerollInTopic(prep, slot) {
+  if (slot.locked) return false;
+  const opts = topicOptions(slot).filter(e => e.key !== slot.pick); if (!opts.length) return false;
+  slot.edits = null;
+  const used = usedKeys(prep, slot.id), rng = makeRng(newSeed());
+  const roll = () => { slot.seed = newSeed(); const fresh = opts.filter(e => !used.has(e.key)); slot.pick = rng.pick(fresh.length ? fresh : opts).key; };
+  roll(); freshen(slot, avoidFor(prep, slot.id), roll);
+  fillSnapshot(slot);
+  return true;
 }
 // same question, new numbers (steering clear of a recent story where it can)
 export function renumber(prep, slot) {
@@ -348,6 +375,7 @@ export function mergeQuestion(prep, qi, dir) {
   const j = qi + dir; if (j < 0 || j >= prep.questions.length) return null;
   const a = prep.questions[qi], b = prep.questions[j];
   const firstSlot = dir < 0 ? b.slots.length : 0;
+  if (!prep.draft) { delete a.versions; delete a.version; delete b.versions; delete b.version; }
   if (dir < 0) b.slots.push(...a.slots); else b.slots.unshift(...a.slots);
   prep.questions.splice(qi, 1);
   return { q: dir < 0 ? j : qi, firstSlot };
@@ -356,6 +384,7 @@ export function mergeQuestion(prep, qi, dir) {
 export function splitSlot(prep, qi, si) {
   const q = prep.questions[qi]; if (q.slots.length < 2) return null;
   const [slot] = q.slots.splice(si, 1);
+  if (!prep.draft) { delete q.versions; delete q.version; }
   prep.questions.splice(qi + 1, 0, { id: uid(), slots: [slot] });
   return qi + 1;
 }

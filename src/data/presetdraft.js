@@ -25,32 +25,87 @@ export function slotDefOf(s, pools = []) {
   return base;
 }
 // A preset from the prep on screen. With a draft, shared pools are written once (and only the ones still in use).
+// A question with versions is written as { versions: [...] }: the version on screen from its rows, the others as they were stored.
 export function presetFromPrep(prep, { id, name, created } = {}) {
   const pools = (prep.draft && prep.draft.pools) || [], used = new Map();
-  const questions = prep.questions.map(q => q.slots.map(s => {
-    const d = slotDefOf(s, pools);
-    if (d.mode === 'pool' && d.poolId && !d.choices) used.set(d.poolId, pools.find(p => p.id === d.poolId));
-    return d;
-  }));
+  const note = (d) => { if (d.mode === 'pool' && d.poolId && !d.choices) used.set(d.poolId, pools.find(p => p.id === d.poolId)); return d; };
+  const questions = prep.questions.map(q => {
+    const mine = q.slots.map(s => note(slotDefOf(s, pools)));
+    if (!q.versions || q.versions.length < 2) return mine;
+    return { versions: q.versions.map((v, i) => (i === q.version ? mine : v.map(d => note(storedDef(d, pools))))) };
+  });
   const preset = { id: id || 'user-' + P.uid(), set: prep.set, name, minutes: prep.minutes, rubricText: prep.rubricText, questions, created: created || new Date().toISOString() };
   if (used.size) preset.pools = [...used.values()].map(p => ({ id: p.id, name: p.name, choices: copy(p.choices) }));
   return preset;
+}
+// a stored version rule, written the way a preset keeps it (a shared pool is named, not copied)
+function storedDef(d, pools) {
+  const x = copy(d);
+  const shared = x.mode === 'pool' && x.poolId && pools.find(p => p.id === x.poolId);
+  if (shared) { delete x.choices; delete x.candidates; x.label = shared.name; }
+  return x;
 }
 
 // Duplicate a question just below itself: the same rules (topics, levels, options, pools, links, marks and lines), a fresh sample.
 // A shared pool stays shared with the copy; linked parts get a link of their own.
 export function duplicateQuestion(prep, qi) {
   const q = prep.questions[qi], pools = (prep.draft && prep.draft.pools) || [];
-  const ren = new Map(), defs = q.slots.map(s => {
-    const d = slotDefOf(s, pools);
-    if (d.link) { if (!ren.has(d.link)) ren.set(d.link, 'link-' + P.uid()); d.link = ren.get(d.link); }
-    return d;
-  });
-  const state = P.newDrawState(); state.avoid = avoidFor(prep);
-  prep.questions.forEach(x => x.slots.forEach(sl => { if (sl.meta) state.used.add(sl.meta.topic); if (sl.pick) state.keys.add(sl.pick); if (sl.def.poolId && sl.meta) (state.taken.get(sl.def.poolId) || state.taken.set(sl.def.poolId, new Set()).get(sl.def.poolId)).add(sl.meta.topic); }));
-  const copyQ = P.drawQuestion({ pools: copy(pools) }, defs, state);
+  const ren = new Map(), fix = (d) => { if (d.link) { if (!ren.has(d.link)) ren.set(d.link, 'link-' + P.uid()); d.link = ren.get(d.link); } return d; };
+  const defs = q.slots.map(s => fix(slotDefOf(s, pools)));
+  const pq = q.versions && q.versions.length > 1 ? { versions: q.versions.map((v, i) => (i === q.version ? defs : v.map(d => fix(storedDef(d, pools))))) } : defs;
+  const copyQ = P.drawQuestion({ pools: copy(pools) }, pq, stateFor(prep, null), undefined, q.versions && q.versions.length > 1 ? q.version : null);
   prep.questions.splice(qi + 1, 0, copyQ);
   return copyQ;
+}
+// what is already on the prep (apart from one question), so a new draw steers clear of it
+function stateFor(prep, except) {
+  const state = P.newDrawState(); state.avoid = avoidFor(prep);
+  prep.questions.forEach(x => { if (x === except) return; x.slots.forEach(sl => { if (sl.meta) state.used.add(sl.meta.topic); if (sl.pick) state.keys.add(sl.pick); if (sl.def.poolId && sl.meta) (state.taken.get(sl.def.poolId) || state.taken.set(sl.def.poolId, new Set()).get(sl.def.poolId)).add(sl.meta.topic); }); });
+  return state;
+}
+
+// ---- versions: a question that is one of several different shapes (say a two-part BIDMAS question OR a Substitution question) ----
+// A prep made from the preset shows one version; the others wait in q.versions so the person can switch.
+export const versionCount = (q) => (q.versions ? q.versions.length : 1);
+export function versionSummary(defs) {
+  return defs.map(d => {
+    if (d.mode === 'query') return describe(d);
+    if (d.mode === 'pool') return `${d.label || 'Pool'}`;
+    const t = String(d.pick || '').split(':')[0];
+    return t.replace(/-/g, ' ');
+  }).join(' + ');
+}
+// Show another version of question qi. In the editor the version on screen is kept first, as its rules.
+export function switchVersion(prep, qi, vi) {
+  const q = prep.questions[qi], pools = (prep.draft && prep.draft.pools) || [];
+  if (!q.versions || vi === q.version || !q.versions[vi]) return false;
+  if (prep.draft) q.versions[q.version] = q.slots.map(s => slotDefOf(s, pools));
+  const nq = P.drawQuestion({ pools: copy(pools) }, { versions: q.versions.map(v => copy(v)) }, stateFor(prep, q), undefined, vi);
+  if (!nq.slots.length) throw new Error('That version could not be built (a question or topic it names no longer exists).');
+  q.slots = nq.slots; q.version = vi;
+  return true;
+}
+// Editor only: another version of this question, starting with one part made from a chooser result.
+export function addVersion(prep, qi, def) {
+  const q = prep.questions[qi], pools = prep.draft.pools || (prep.draft.pools = []);
+  if (def.mode === 'pool' && def.poolId) upsertPool(prep, def);
+  if (!q.versions) { q.versions = [q.slots.map(s => slotDefOf(s, pools))]; q.version = 0; }
+  q.versions[q.version] = q.slots.map(s => slotDefOf(s, pools));
+  q.versions.push([copy(def)]);
+  switchVersion(prep, qi, q.versions.length - 1);
+  if (def.mode === 'pool' && def.poolId) syncPool(prep, def.poolId);
+  return q;
+}
+// Editor only: drop the version on screen and show another.
+export function removeVersion(prep, qi) {
+  const q = prep.questions[qi]; if (!q.versions || q.versions.length < 2) return false;
+  const pools = (prep.draft && prep.draft.pools) || [];
+  q.versions.splice(q.version, 1);
+  const vi = Math.min(q.version, q.versions.length - 1), several = q.versions.length > 1;
+  const nq = P.drawQuestion({ pools: copy(pools) }, several ? { versions: copy(q.versions) } : copy(q.versions[0]), stateFor(prep, q), undefined, several ? vi : null);
+  q.slots = nq.slots;
+  if (several) q.version = vi; else { delete q.versions; delete q.version; }
+  return true;
 }
 
 // ---- shared pools inside a draft ----
