@@ -109,6 +109,8 @@ import averages from './averages.js';
 import meanUnknown from './mean-unknown.js';
 import probability from './probability.js';
 import problemSolving from './problem-solving.js';
+import countingPuzzles from './counting-puzzles.js';
+import reasoningProblems from './reasoning-problems.js';
 import rpWrite from './rp-write.js';
 import rpSimplify from './rp-simplify.js';
 import rpEquivalent from './rp-equivalent.js';
@@ -167,5 +169,5 @@ export default [
   fdpDecToFrac, fdpFracToDec, fdpPercToFd, fdpToPerc, fdpTable, fdpOrder, fdpBeyond, fdpMixedCalc, fdpRecurringId, fdpRecurringFrac,
   indicesMultiply, indicesDivide, expandNumber, expandLetter, expandSimplifyAdd, expandSimplifySubtract, expandPowers, expandPowersHigh, expandDouble, expandDoubleCoef, expandSquare, expandDots, expandSimplifyDouble, expandTriple, factoriseNumber, factoriseLetter, factoriseNumberLetter, factoriseTwoLetters, factorisePowers, factorisePowersHigh, factoriseQuadratic, factoriseSquares, factoriseAx2, factoriseFull,
   equationsOneStep, equationsTwoStep, equationsBothSides, equationsBothSidesRight, equationsBothSidesNegative, equationsBrackets, equationsFraction, equationsTwoFractions, expandThenSolve, equationsQuadraticSimple, equationsQuadraticFactorise, equationsDenominator,
-  ...subTypes, pythagoras, hcfLcm, primeFactors, pctBenchmark, pctBuildup, pctHarder, pctCalc, pctOfAnother, pctChangeBy, pctMultiplier, pctFindChange, pctReverse, pctCompound, pctRepeat, pctCompoundFind, pctprobRest, pctprobWhole, pctprobGroup, pctprobSurvey, pctprobBestBuy, pctprobPay, pctprobSaleVat, pctprobProfit, pctprobFractionRatio, pctprobGrowth, rpWrite, rpSimplify, rpEquivalent, rpSimplifyUnits, rpSimplifyDec, rpOneN, rpShare2, rpShare3, rpOneShare, rpDifference, rpFraction, rpDirect, rpRecipe, rpScale, rpInverse, rpChange, rpCombine, rpprobShareSpend, rpprobMix, rpprobDecimal, rpprobAges, rpprobAfter, rpprobHours, rpprobAlgebra, speedDistanceTime, circles, areaShapes, volumePrisms, unitsMetric, standardForm, simultaneous, rounding, averages, meanUnknown, probability, problemSolving,
+  ...subTypes, pythagoras, hcfLcm, primeFactors, pctBenchmark, pctBuildup, pctHarder, pctCalc, pctOfAnother, pctChangeBy, pctMultiplier, pctFindChange, pctReverse, pctCompound, pctRepeat, pctCompoundFind, pctprobRest, pctprobWhole, pctprobGroup, pctprobSurvey, pctprobBestBuy, pctprobPay, pctprobSaleVat, pctprobProfit, pctprobFractionRatio, pctprobGrowth, rpWrite, rpSimplify, rpEquivalent, rpSimplifyUnits, rpSimplifyDec, rpOneN, rpShare2, rpShare3, rpOneShare, rpDifference, rpFraction, rpDirect, rpRecipe, rpScale, rpInverse, rpChange, rpCombine, rpprobShareSpend, rpprobMix, rpprobDecimal, rpprobAges, rpprobAfter, rpprobHours, rpprobAlgebra, speedDistanceTime, circles, areaShapes, volumePrisms, unitsMetric, standardForm, simultaneous, rounding, averages, meanUnknown, probability, problemSolving, countingPuzzles, reasoningProblems,
 ];

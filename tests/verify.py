@@ -184,9 +184,9 @@ for rec in recs:
             if [int(w) for w in want] != c['ys'] or shown != c['ys']: fail(rec, f'table: rule gives {want}, listed {c["ys"]}, shown {shown}')
             else: ok += 1
         elif k == 'num':
-            ns = {'sqrt': sp.sqrt, 'pi': sp.pi, 'gcd': math.gcd, 'lcm': math.lcm, 'Fraction': Fraction, 'round': round, 'floor': math.floor, 'len': len, 'range': range}
+            ns = {'sqrt': sp.sqrt, 'pi': sp.pi, 'gcd': math.gcd, 'lcm': math.lcm, 'Fraction': Fraction, 'round': round, 'floor': math.floor, 'len': len, 'range': range, 'sum': sum, 'min': min, 'max': max, 'abs': abs, 'str': str, 'int': int, 'set': set}
             expr = c['expr']
-            ev = eval(expr, {'__builtins__': {}}, ns)
+            ev = eval(expr, {'__builtins__': {}, **ns})       # names go in the globals so comprehensions can see them
             if isinstance(ev, list):
                 vals = [float(v) for v in ev]; want = [float(x) for x in c['val'].split(',')]
                 if not all(close(a, b, 1e-9) for a, b in zip(vals, want)) or len(vals) != len(want): fail(rec, f'num list {vals} vs {want}')
