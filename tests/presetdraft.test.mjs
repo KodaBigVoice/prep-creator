@@ -137,4 +137,11 @@ ok(seen.size === 2, 'both topics come up');
   ok(c2.slots[0].def.poolId === 'pool-a', 'a shared pool stays shared in the copy');
   ok(new Set(sp.questions.slice(1).map(q => q.slots[0].meta.topic)).size === 4, 'the shared pool gives every question a different topic');
 }
+// a preset that names a question or topic that no longer exists still makes a prep: that part is left out and reported
+{
+  const p = prepFromPreset({ id: 'm', set: 'Y7 Additional', name: 'm', minutes: 30, questions: [
+    [{ mode: 'fixed', pick: 'nope:gone' }], [{ mode: 'query', topics: ['No such topic'], level: 'Core' }, { mode: 'query', topics: ['Fractions'], level: 'Core' }], [{ mode: 'query', topics: ['Fractions'], level: 'Core' }]] }, 'Y7 Additional', 'x');
+  ok(p.questions.length === 2 && p.questions[0].slots.length === 1, 'the parts that cannot be built are left out');
+  ok(prepFromPreset.problems.length === 2, 'and reported');
+}
 if (bad) { console.log(bad, 'failures'); process.exit(1); } else console.log('presetdraft tests passed');

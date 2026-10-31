@@ -104,6 +104,7 @@ function useSet(setId, presetId = undefined) {
   const list = presetsFor(setId);
   const preset = presetId ? findPreset(presetId) : list[0];
   if (preset) ctx.prep = finishNew(P.prepFromPreset(withTicks(preset), setId, 'x'));
+  if (preset && P.prepFromPreset.problems && P.prepFromPreset.problems.length) { const n = P.prepFromPreset.problems.length; setTimeout(() => toast(`${n} part${n === 1 ? '' : 's'} of “${preset.name}” could not be built because a question or topic it names no longer exists, so ${n === 1 ? 'it was' : 'they were'} left out. Edit the preset to fix it.`, 9000), 300); }
   else ctx.prep = finishNew(P.newPrep({ set: setId, name: 'x', minutes: set.minutes }));
   ctx.prep.presetId = preset ? preset.id : null;
   ctx.dirty = false; afterLoad();

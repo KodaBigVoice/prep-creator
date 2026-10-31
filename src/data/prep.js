@@ -148,7 +148,7 @@ export function linkGroup(prep, slot) {
 }
 // Draw one question's slots from its rule definitions. `state` carries what is already on the prep: topics and questions used, recent stories to avoid,
 // and the topics already drawn from each shared pool.
-export function newDrawState() { return { used: new Set(), keys: new Set(), avoid: newAvoid(), taken: new Map() }; }
+export function newDrawState() { return { used: new Set(), keys: new Set(), avoid: newAvoid(), taken: new Map(), problems: [] }; }
 export function drawQuestion(preset, defs, state, rng = makeRng(newSeed())) {
   const { used, keys, avoid, taken } = state;
   const gt = new Map();                                                              // link -> the topic drawn for those linked parts
@@ -161,16 +161,18 @@ export function drawQuestion(preset, defs, state, rng = makeRng(newSeed())) {
         if (gt.has(d.link)) opts.force = gt.get(d.link);
         else opts.only = commonTopics(defs.filter(x => x.link === d.link && x.mode === 'pool').map(x => resolveDef(preset, x)));
       }
-      const s = makeSlot(d, used, rng, keys, avoid, opts);
+      // a rule that no longer matches anything (a question or topic that was renamed or removed) must not stop the whole prep: that part is left out and reported
+      let s; try { s = makeSlot(d, used, rng, keys, avoid, opts); } catch (e) { state.problems.push(e.message); return null; }
       if (d.link && d.mode === 'pool' && !gt.has(d.link)) gt.set(d.link, s.meta.topic);
       used.add(s.meta.topic); keys.add(s.pick); addScene(avoid, s); if (d.poolId) mates.add(s.meta.topic);
       return s;
-    }),
+    }).filter(Boolean),
   };
 }
 export function prepFromPreset(preset, setId, name, rng = makeRng(newSeed())) {
   const set = setById[setId], state = newDrawState();
-  const questions = preset.questions.map((defs) => drawQuestion(preset, defs, state, rng));
+  const questions = preset.questions.map((defs) => drawQuestion(preset, defs, state, rng)).filter(q => q.slots.length);
+  prepFromPreset.problems = state.problems;
   return newPrep({ set: setId, name, minutes: preset.minutes ?? set.minutes, presetId: preset.id, rubricText: preset.rubricText, questions });
 }
 export function newPrep({ set, name, minutes, presetId = null, rubricText, questions = [] }) {
