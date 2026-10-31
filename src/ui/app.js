@@ -20,7 +20,7 @@ ctx.layout = { ...DEFAULT_LAYOUT, ...(store.settings.layout || {}) };
 ctx.save = () => saveStoreSoon(store);
 setHistory(() => store.preps);
 
-const presetsFor = (setId) => [...STARTER_PRESETS.filter(p => p.set === setId), ...store.presets.filter(p => p.set === setId)];
+const presetsFor = (setId) => [...STARTER_PRESETS.filter(p => p.set === setId), ...store.presets.filter(p => p.set === setId && !STARTER_PRESETS.some(s => s.id === p.id))];   // a saved copy with a starter's id is the starter
 const findPreset = (id) => STARTER_PRESETS.find(p => p.id === id) || store.presets.find(p => p.id === id);
 function withTicks(preset) {
   const t = store.ticks[preset.id]; if (!t) return preset;
