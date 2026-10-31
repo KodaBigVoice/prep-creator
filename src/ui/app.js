@@ -186,7 +186,7 @@ function renderToolbar() {
   setKids(toolbar,
     h('button', { class: 'iconbtn hamburger', 'aria-label': 'Options', 'aria-pressed': !!ctx.ui.sidebar, title: ctx.ui.sidebar ? 'Hide the options panel' : 'Show the options panel', onClick: toggleSidebar },
       h('span', { html: '<svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 5h12M3 9h12M3 13h12"/></svg>' })),
-    h('img', { class: 'applogo', src: 'logo.svg', alt: 'PMU | Prep Maths Universe', title: 'PMU | Prep Maths Universe' }),
+    h('a', { class: 'homelink', href: './', title: 'PMU home: all your maths tools', 'aria-label': 'PMU home' }, h('img', { class: 'applogo', src: 'logo.svg', alt: 'PMU | Prep Maths Universe' })),
     h('div', { class: 'field namefield', title: 'The name of this prep. Click to rename it.' }, h('span', { class: 'penico', html: ICON_PENCIL }), nameIn),
     h('span', { class: 'sp' }),
     saveStat,

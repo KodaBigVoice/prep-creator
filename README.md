@@ -11,7 +11,7 @@ It is a plain static site: no build step, no server, nothing to install to *use*
 3. Leave the build command empty and set the publish directory to `.` (the included `netlify.toml` already says this). Deploy.
 4. Open the site in Edge. Every time you change the files on GitHub, Netlify republishes automatically.
 
-To try it on your own computer first: in this folder run `python3 -m http.server 8765` and open <http://localhost:8765>. (Opening `index.html` by double-click will not work: browsers block the app's modules from `file://`.)
+To try it on your own computer first: in this folder run `python3 -m http.server 8765` and open <http://localhost:8765> (the PMU home page; the prep creator is `prep.html`). (Opening `index.html` by double-click will not work: browsers block the app's modules from `file://`.)
 
 ## Printing
 
