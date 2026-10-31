@@ -1,7 +1,7 @@
 // The preset editor: shared pools, saving a draft as a preset, and loading it back.
 import { prepFromPreset, newPrep, addQuestionDef, addSlotDef, rerollSlot, nudgeSlot, linkGroup, renumber } from '../src/data/prep.js';
 import { newChoice, poolTopics, choiceOptions } from '../src/data/pools.js';
-import { linkWithAbove, unlinkSlot, syncLinked, presetFromPrep, syncPool, upsertPool, addFromDef, setSlotPool, pruneDraftPools, poolUsers, ruleText, sharedFor } from '../src/data/presetdraft.js';
+import { duplicateQuestion, linkWithAbove, unlinkSlot, syncLinked, presetFromPrep, syncPool, upsertPool, addFromDef, setSlotPool, pruneDraftPools, poolUsers, ruleText, sharedFor } from '../src/data/presetdraft.js';
 import { STARTER_PRESETS } from '../src/data/presets.js';
 let bad = 0;
 const ok = (c, m) => { if (!c) { bad++; console.log('FAIL', m); } };
@@ -121,5 +121,20 @@ ok(seen.size === 2, 'both topics come up');
     ok(q.slots[1].def.choices.length === 1 && q.slots[1].def.choices[0].topic === 'Expanding brackets', 'topics stay in step');
     unlinkSlot(p, q.slots[1]); ok(!q.slots[0].def.link && !q.slots[1].def.link, 'unlinking a pair frees both');
   }
+}
+// duplicating a question copies every rule; linked parts get a link of their own, shared pools stay shared
+{
+  const p = prepFromPreset(link(), 'Y7 Additional', 'x'); p.draft = { presetId: null, pools: [] };
+  const c = duplicateQuestion(p, 0);
+  ok(p.questions.length === 2 && p.questions[1] === c, 'copy sits below the original');
+  const [a, b, , ] = c.slots, o = p.questions[0].slots;
+  ok(a.def.link && a.def.link === b.def.link && a.def.link !== o[0].def.link, 'the copy has its own link');
+  ok(a.meta.topic === b.meta.topic, 'the copy is still linked');
+  ok(JSON.stringify(a.def.choices) === JSON.stringify(o[0].def.choices), 'options are copied');
+  ok(c.slots.length === 4 && c.slots.map(s => s.marks[0]).join() === o.map(s => s.marks[0]).join(), 'parts and marks are copied');
+  const sp = prepFromPreset(preset, 'Y7 Additional', 'x'); sp.draft = { presetId: null, pools: JSON.parse(JSON.stringify(preset.pools)) };
+  const c2 = duplicateQuestion(sp, 1);
+  ok(c2.slots[0].def.poolId === 'pool-a', 'a shared pool stays shared in the copy');
+  ok(new Set(sp.questions.slice(1).map(q => q.slots[0].meta.topic)).size === 4, 'the shared pool gives every question a different topic');
 }
 if (bad) { console.log(bad, 'failures'); process.exit(1); } else console.log('presetdraft tests passed');

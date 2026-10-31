@@ -9,7 +9,7 @@ import { newChoice } from '../data/pools.js';
 import { openPoolDialog, openEditDialog, pickName } from './dialogs.js';
 import { typeById } from '../core/engine.js';
 import * as P from '../data/prep.js';
-import { sharedFor, setSlotPool, addFromDef, addPartFromDef, ruleText, poolUsers, linkWithAbove, unlinkSlot, linkedWith, toPool } from '../data/presetdraft.js';
+import { sharedFor, setSlotPool, addFromDef, addPartFromDef, ruleText, poolUsers, linkWithAbove, unlinkSlot, linkedWith, toPool, duplicateQuestion } from '../data/presetdraft.js';
 const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
 const ICON_UP = '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 2.5h10M8 13.5V6M4.8 8.7 8 5.5l3.2 3.2"/></svg>';
@@ -168,6 +168,7 @@ function detailPanel(q, qi, slot, si, cq, part) {
       abtn(ICON_EDIT, 'Edit', () => openEditDialog(slot, () => ctx.commit()), 'Change the wording or the answer'),
       h('button', { class: 'abtn', title: 'More options', 'data-menu-anchor': '', onClick: (e) => showMenu(e.currentTarget, [
         { label: '+ Add a part', onClick: () => addPart(qi) },
+        { label: 'Duplicate this question', sub: 'Same topics, options and pools; a fresh sample', onClick: () => { duplicateQuestion(prep, qi); ctx.ui.sel = { q: qi + 1, k: 0 }; ctx.commit(); toast(`Question ${qi + 1} copied as question ${qi + 2}.`, 4000, { label: 'Undo', onClick: () => ctx.undo() }); } },
         q.slots.length > 1 ? { label: 'Make this its own question', sub: 'Take it out of the multipart question', onClick: () => { const nq = P.splitSlot(prep, qi, si); ctx.ui.sel = nq === null ? null : { q: nq, k: 0 }; ctx.commit(); } } : null,
         { sep: true },
         prep.draft && si > 0 && !(slot.def.link && q.slots[si - 1].def.link === slot.def.link) ? { label: 'Link with the part above', sub: 'One topic decision for both; each part keeps its own options', onClick: () => { linkWithAbove(prep, q, si); ctx.commit(); toast('Linked. Open each part’s pool (the pool icon) to choose the topics and the options for that part.', 6000); } } : null,

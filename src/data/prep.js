@@ -146,27 +146,31 @@ export function linkGroup(prep, slot) {
   const g = q.slots.filter(x => x.def.link === l && x.def.mode === 'pool');
   return g.includes(slot) && g.length > 1 ? g : [slot];
 }
+// Draw one question's slots from its rule definitions. `state` carries what is already on the prep: topics and questions used, recent stories to avoid,
+// and the topics already drawn from each shared pool.
+export function newDrawState() { return { used: new Set(), keys: new Set(), avoid: newAvoid(), taken: new Map() }; }
+export function drawQuestion(preset, defs, state, rng = makeRng(newSeed())) {
+  const { used, keys, avoid, taken } = state;
+  const gt = new Map();                                                              // link -> the topic drawn for those linked parts
+  return {
+    id: uid(),
+    slots: defs.map((d0) => {
+      const d = resolveDef(preset, d0), mates = d.poolId ? (taken.get(d.poolId) || taken.set(d.poolId, new Set()).get(d.poolId)) : new Set();
+      const opts = { mates };
+      if (d.link && d.mode === 'pool') {
+        if (gt.has(d.link)) opts.force = gt.get(d.link);
+        else opts.only = commonTopics(defs.filter(x => x.link === d.link && x.mode === 'pool').map(x => resolveDef(preset, x)));
+      }
+      const s = makeSlot(d, used, rng, keys, avoid, opts);
+      if (d.link && d.mode === 'pool' && !gt.has(d.link)) gt.set(d.link, s.meta.topic);
+      used.add(s.meta.topic); keys.add(s.pick); addScene(avoid, s); if (d.poolId) mates.add(s.meta.topic);
+      return s;
+    }),
+  };
+}
 export function prepFromPreset(preset, setId, name, rng = makeRng(newSeed())) {
-  const set = setById[setId];
-  const used = new Set(), keys = new Set(), avoid = newAvoid(), taken = new Map();       // taken: poolId -> topics already drawn from that shared pool
-  const questions = preset.questions.map((defs) => {
-    const gt = new Map();                                                              // link -> the topic drawn for those linked parts
-    return {
-      id: uid(),
-      slots: defs.map((d0) => {
-        const d = resolveDef(preset, d0), mates = d.poolId ? (taken.get(d.poolId) || taken.set(d.poolId, new Set()).get(d.poolId)) : new Set();
-        const opts = { mates };
-        if (d.link && d.mode === 'pool') {
-          if (gt.has(d.link)) opts.force = gt.get(d.link);
-          else opts.only = commonTopics(defs.filter(x => x.link === d.link && x.mode === 'pool').map(x => resolveDef(preset, x)));
-        }
-        const s = makeSlot(d, used, rng, keys, avoid, opts);
-        if (d.link && d.mode === 'pool' && !gt.has(d.link)) gt.set(d.link, s.meta.topic);
-        used.add(s.meta.topic); keys.add(s.pick); addScene(avoid, s); if (d.poolId) mates.add(s.meta.topic);
-        return s;
-      }),
-    };
-  });
+  const set = setById[setId], state = newDrawState();
+  const questions = preset.questions.map((defs) => drawQuestion(preset, defs, state, rng));
   return newPrep({ set: setId, name, minutes: preset.minutes ?? set.minutes, presetId: preset.id, rubricText: preset.rubricText, questions });
 }
 export function newPrep({ set, name, minutes, presetId = null, rubricText, questions = [] }) {

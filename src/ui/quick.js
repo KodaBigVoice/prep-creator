@@ -78,7 +78,7 @@ function choiceCard(c, { onChange, onRemove, open, onToggleOpen }) {
       last = i; onChange();
     } }),
     h('span', { class: 'pc-nm' }, `${e.type} › ${e.label}`), h('small', {}, e.levels.join(' · '))))) : null;
-  return h('div', { class: 'pc' + (c.enabled === false ? ' off' : '') },
+  return h('div', { class: 'pc' + (c.enabled === false ? ' off' : ''), 'data-topic': c.topic },
     h('div', { class: 'pc-h' },
       h('input', { type: 'checkbox', checked: c.enabled !== false, title: 'Include this topic in the pool', 'aria-label': 'Include ' + c.topic, onChange: (e) => { c.enabled = e.target.checked; onChange(); } }),
       h('b', {}, c.topic), h('small', {}, `${inc.size} of ${all.length} options`), h('span', { style: { flex: 1 } }),
@@ -160,6 +160,16 @@ export function openQuickChooser({ title = 'Add a question', confirmLabel = 'Use
       q.parts.map((p, i) => h('div', { style: { margin: '3px 0' } }, q.parts.length > 1 ? `(${'abcdefgh'[i]}) ` : '', h('span', { html: T((!q.stem && p.verb ? p.verb + ' ' : '') + p.body) }))),
       h('button', { class: 'btn small', onClick: () => { st.seed = newSeed(); drawExample(); } }, '↻ Another example'));
   }
+  // Redrawing the pool cards must not throw away where you were scrolled to (the card list, the page, or a card's option list)
+  function keepScroll(fn) {
+    const right = lvBox.closest('.qk-right'), r0 = right ? right.scrollTop : 0;
+    const box = lvBox.querySelector('.pcs'), top = box ? box.scrollTop : 0;
+    const inner = new Map([...lvBox.querySelectorAll('.pc')].map(el => [el.dataset.topic, el.querySelector('.pc-opts') ? el.querySelector('.pc-opts').scrollTop : 0]));
+    fn();
+    const nb = lvBox.querySelector('.pcs'); if (nb) nb.scrollTop = top;
+    lvBox.querySelectorAll('.pc').forEach(el => { const o = el.querySelector('.pc-opts'); if (o && inner.has(el.dataset.topic)) o.scrollTop = inner.get(el.dataset.topic); });
+    if (right) right.scrollTop = r0;
+  }
   function drawRest() {
     const tops = [...st.topics];
     tabsEl.querySelectorAll('button').forEach(b => b.setAttribute('aria-checked', b.dataset.tab === st.tab));
@@ -174,9 +184,9 @@ export function openQuickChooser({ title = 'Add a question', confirmLabel = 'Use
       const g = rc.get(); st.lo = g.lo; st.hi = g.hi;
       setKids(lvBox, rc.el); setKids(note);
     } else {
-      const again = () => { st.seed = newSeed(); drawRest(); };
+      const again = () => keepScroll(() => { st.seed = newSeed(); drawRest(); });
       setKids(lvBox, h('div', { class: 'pcs' }, st.choices.map(c => choiceCard(c, { open: st.open.has(c.topic), onChange: again,
-        onToggleOpen: () => { st.open.has(c.topic) ? st.open.delete(c.topic) : st.open.add(c.topic); drawRest(); },
+        onToggleOpen: () => keepScroll(() => { st.open.has(c.topic) ? st.open.delete(c.topic) : st.open.add(c.topic); drawRest(); }),
         onRemove: () => { st.topics.delete(c.topic); st.choices = st.choices.filter(x => x !== c); drawTopics(); drawRest(); } }))));
       const n = poolEntries().length, nt = poolByTopic({ choices: st.choices }).size;
       setKids(note, `${n} question option${n === 1 ? '' : 's'} across ${nt} topic${nt === 1 ? '' : 's'}.`, nt === 1 ? ' With one topic, ⤮ gives a different question in that topic.' : ' ⤮ always moves to a different topic.');

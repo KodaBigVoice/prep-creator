@@ -3,6 +3,7 @@
 import * as P from './prep.js';
 import { poolChoices, poolTopics, upgradePool, newChoice } from './pools.js';
 import { describe, levelOf } from './query.js';
+import { avoidFor } from './fresh.js';
 
 const copy = (x) => JSON.parse(JSON.stringify(x));
 export const isDraft = (prep) => !!(prep && prep.draft);
@@ -34,6 +35,22 @@ export function presetFromPrep(prep, { id, name, created } = {}) {
   const preset = { id: id || 'user-' + P.uid(), set: prep.set, name, minutes: prep.minutes, rubricText: prep.rubricText, questions, created: created || new Date().toISOString() };
   if (used.size) preset.pools = [...used.values()].map(p => ({ id: p.id, name: p.name, choices: copy(p.choices) }));
   return preset;
+}
+
+// Duplicate a question just below itself: the same rules (topics, levels, options, pools, links, marks and lines), a fresh sample.
+// A shared pool stays shared with the copy; linked parts get a link of their own.
+export function duplicateQuestion(prep, qi) {
+  const q = prep.questions[qi], pools = (prep.draft && prep.draft.pools) || [];
+  const ren = new Map(), defs = q.slots.map(s => {
+    const d = slotDefOf(s, pools);
+    if (d.link) { if (!ren.has(d.link)) ren.set(d.link, 'link-' + P.uid()); d.link = ren.get(d.link); }
+    return d;
+  });
+  const state = P.newDrawState(); state.avoid = avoidFor(prep);
+  prep.questions.forEach(x => x.slots.forEach(sl => { if (sl.meta) state.used.add(sl.meta.topic); if (sl.pick) state.keys.add(sl.pick); if (sl.def.poolId && sl.meta) (state.taken.get(sl.def.poolId) || state.taken.set(sl.def.poolId, new Set()).get(sl.def.poolId)).add(sl.meta.topic); }));
+  const copyQ = P.drawQuestion({ pools: copy(pools) }, defs, state);
+  prep.questions.splice(qi + 1, 0, copyQ);
+  return copyQ;
 }
 
 // ---- shared pools inside a draft ----
