@@ -71,3 +71,13 @@
 .cover .cv-mark{position:relative;width:42mm;height:20mm;border:1.4px solid #111;text-align:left;padding:2mm 3mm}
 .cover .cv-mark b{font-size:.85em}
 .cover .cv-mark i{position:absolute;right:3mm;bottom:1.5mm;font-style:normal;font-size:1.05em;font-weight:600}
+
+/* sections */
+.sechead{font-weight:700;margin:0 0 2.2mm;padding-bottom:.7mm;border-bottom:.25mm solid #555;letter-spacing:.01em}
+.sechead span{font-weight:400}.sechead span::before{content:" \2013  "}
+.frow.sechead{display:block}
+.qo.secnum .q{grid-template-columns:11mm 1fr}
+.aos.secnum .frow{grid-template-columns:11mm 7.5mm 1fr}
+.aos .frow.sechead{border-top:0;padding-top:0}
+.qo .sechead{margin-top:2.5mm}
+.qo .body>div:first-child .sechead{margin-top:0}

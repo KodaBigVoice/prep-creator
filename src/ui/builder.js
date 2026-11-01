@@ -1,6 +1,9 @@
 import { h, toast, confirmBox, showMenu } from './dom.js';
 import { ctx } from './state.js';
-import { composeQuestion } from '../layout/compose.js';
+import { composeQuestion, composePrep } from '../layout/compose.js';
+import * as S from '../data/sections.js';
+import { buildSection, rebuildSection } from '../data/plan.js';
+import { openPlanDialog } from './plan.js';
 import { mathToHTML } from '../layout/render.js';
 import { openPicker } from './picker.js';
 import { openQuickChooser } from './quick.js';
@@ -23,6 +26,7 @@ const ICON_SWAP = SV('<path d="M2.5 5.5h10M9.8 2.8l2.7 2.7-2.7 2.7M13.5 10.5h-10
 const ICON_EDIT = SV('<path d="M2.8 13.2l.6-2.9 7.2-7.2a1.4 1.4 0 0 1 2 0l.3.3a1.4 1.4 0 0 1 0 2l-7.2 7.2-2.9.6zM9.6 4.1l2.3 2.3"/>');
 const ICON_EYE = SV('<path d="M1.5 8S4 3.6 8 3.6 14.5 8 14.5 8 12 12.4 8 12.4 1.5 8 1.5 8z"/><circle cx="8" cy="8" r="2"/>');
 const ICON_EYE_OFF = SV('<path d="M1.5 8S4 3.6 8 3.6c1 0 1.9.3 2.7.7M14.5 8S12 12.4 8 12.4c-1 0-1.9-.3-2.7-.7M2.5 2.5l11 11"/><path d="M6.4 6.4a2 2 0 0 0 3.2 3.2"/>');
+const lab = (qi) => S.labelsOf(ctx.prep)[qi] || String(qi + 1);
 const ICON_MORE = '<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><circle cx="3.5" cy="8" r="1.3"/><circle cx="8" cy="8" r="1.3"/><circle cx="12.5" cy="8" r="1.3"/></svg>';
 const ICON_SHUFFLE = SV('<path d="M2 4.5h2.2c3.2 0 3.6 7 6.8 7H14M2 11.5h2.2c1 0 1.7-.7 2.3-1.6M14 4.5h-3c-1 0-1.7.7-2.3 1.6M12 2.5l2 2-2 2M12 9.5l2 2-2 2"/>');
 // difficulty: three rising bars; the filled ones are the level
@@ -44,7 +48,7 @@ function stepper({ value, onChange, step = 1, min = 0, manual = false, title }) 
 export function renderBuilder(root) {
   const prep = ctx.prep, aos = ctx.layout.mode === 'aos';
   const T = (s) => mathToHTML(s, ctx.katex);
-  const qs = prep.questions.map((q, i) => composeQuestion(q, i + 1));
+  const qs = composePrep(prep);
   const total = qs.reduce((a, q) => a + q.marks, 0);
   const sel = ctx.ui.sel;
   root.replaceChildren();
@@ -68,15 +72,16 @@ export function renderBuilder(root) {
   prep.questions.forEach((q, qi) => {
     try { drawCard(q, qi); } catch (err) {
       console.error('Could not draw question', qi + 1, err);
-      root.append(h('div', { class: 'q-card' }, h('div', { class: 'q-head' }, h('span', { class: 'n' }, `${qi + 1}.`), h('span', { class: 'hint' }, `This question could not be shown (${err.message}). Try ↻ or Replace.`), h('span', { class: 'sp' }),
+      root.append(h('div', { class: 'q-card' }, h('div', { class: 'q-head' }, h('span', { class: 'n' }, `${lab(qi)}.`), h('span', { class: 'hint' }, `This question could not be shown (${err.message}). Try ↻ or Replace.`), h('span', { class: 'sp' }),
         h('button', { class: 'btn small', onClick: () => { try { q.slots.forEach(sl => P.rerollSlot(prep, sl)); } catch (e2) { toast('Still cannot make it: ' + e2.message); } ctx.commit(); } }, '↻'))));
     }
   });
   function drawCard(q, qi) {
     const cq = qs[qi];
     const isSel = sel && sel.q === qi;
+    if (cq.section) root.append(sectionHead(cq.section, qs, qi));
     const card = h('div', { class: 'q-card' + (isSel ? ' sel' : '') },
-      h('div', { class: 'q-head' }, h('span', { class: 'n' }, `${qi + 1}.`), h('span', { class: 'hint' }, `${cq.marks} mark${cq.marks === 1 ? '' : 's'}`),
+      h('div', { class: 'q-head' }, h('span', { class: 'n' }, `${cq.n}.`), h('span', { class: 'hint' }, `${cq.marks} mark${cq.marks === 1 ? '' : 's'}`),
         q.slots.some(s => s.locked) ? h('span', { class: 'lockmark', title: 'Locked', html: ICON_LOCK }) : null,
         versionBar(q, qi),
         h('span', { class: 'sp' }),
@@ -84,8 +89,8 @@ export function renderBuilder(root) {
           h('button', { class: 'iconbtn', title: 'Make this a further part of the question above', disabled: qi === 0, html: ICON_UP, onClick: () => joinQuestion(qi, -1) }),
           h('button', { class: 'iconbtn', title: 'Make this the first part of the question below', disabled: qi === prep.questions.length - 1, html: ICON_DOWN, onClick: () => joinQuestion(qi, 1) }),
           h('span', { class: 'acts-sep' }),
-          h('button', { class: 'iconbtn', title: 'Move up', onClick: () => { P.moveQuestion(prep, qi, -1); ctx.ui.sel = sel && sel.q === qi ? { ...sel, q: Math.max(0, qi - 1) } : null; ctx.commit(); } }, '↑'),
-          h('button', { class: 'iconbtn', title: 'Move down', onClick: () => { P.moveQuestion(prep, qi, 1); ctx.ui.sel = sel && sel.q === qi ? { ...sel, q: Math.min(prep.questions.length - 1, qi + 1) } : null; ctx.commit(); } }, '↓'))));
+          h('button', { class: 'iconbtn', title: 'Move up', onClick: () => { const to = P.moveQuestion(prep, qi, -1); ctx.ui.sel = sel && sel.q === qi ? { ...sel, q: to } : null; ctx.commit(); } }, '↑'),
+          h('button', { class: 'iconbtn', title: 'Move down', onClick: () => { const to = P.moveQuestion(prep, qi, 1); ctx.ui.sel = sel && sel.q === qi ? { ...sel, q: to } : null; ctx.commit(); } }, '↓'))));
     if (cq.stem) card.append(h('div', { class: 'stemrow' }, h('div'), h('div', { class: 'txt', html: T(cq.stem) }), h('div'), h('div')));
     cq.parts.forEach((p, k) => {
       const slot = q.slots[p.si];
@@ -113,7 +118,50 @@ export function renderBuilder(root) {
   }
   root.append(h('div', { class: 'addrow' },
     h('button', { class: 'btn', onClick: addSimple }, '+ Add question'),
-    h('button', { class: 'btn', title: 'Choose one exact question from the full list', style: { flex: '0 0 auto', width: 'auto' }, onClick: browseAdd }, 'Browse all…')));
+    h('button', { class: 'btn', title: 'Choose one exact question from the full list', style: { flex: '0 0 auto', width: 'auto' }, onClick: browseAdd }, 'Browse all…'),
+    h('button', { class: 'btn', title: 'A new section A, B, C… built from a topic: tick the options, and the questions ramp from easy to hard', style: { flex: '0 0 auto', width: 'auto' }, onClick: () => addSection() }, '+ Add section')));
+}
+// ---- sections ----
+// The bar above the first question of a section: its letter, a title (printed beside it), and what you can do with the section.
+function sectionHead(sec, qs, qi) {
+  const prep = ctx.prep, si = S.sectionsOf(prep).findIndex(x => x.start === qi), info = S.sectionsOf(prep)[si];
+  const n = info.end - info.start, marks = qs.slice(info.start, info.end).reduce((a, q) => a + q.marks, 0), last = S.sectionsOf(prep).length - 1;
+  const title = h('input', { type: 'text', class: 'sec-title', value: info.sec.title || '', placeholder: 'Title (optional), e.g. Two-step equations', 'aria-label': `Title of section ${sec.letter}`,
+    onChange: () => { info.sec.title = title.value.trim(); ctx.commit(); } });
+  const plan = info.sec.plan;
+  return h('div', { class: 'sec-head', 'data-sec': sec.letter },
+    h('span', { class: 'sec-letter' }, `Section ${sec.letter}`), title,
+    h('span', { class: 'hint' }, `${n} question${n === 1 ? '' : 's'} · ${marks} mark${marks === 1 ? '' : 's'}`),
+    h('span', { class: 'acts' },
+      h('button', { class: 'btn small', title: plan ? 'Change the topic, options or number of questions; the section is rebuilt' : 'Replace this section’s questions with a plan: a topic, the options to use, and how many', onClick: () => editPlan(si) }, plan ? 'Plan…' : 'Build from a plan…'),
+      h('button', { class: 'iconbtn', title: 'Move this section up', disabled: si === 0, html: ICON_UP, onClick: () => { S.moveSection(prep, si, -1); ctx.ui.sel = null; ctx.commit(); } }),
+      h('button', { class: 'iconbtn', title: 'Move this section down', disabled: si === last, html: ICON_DOWN, onClick: () => { S.moveSection(prep, si, 1); ctx.ui.sel = null; ctx.commit(); } }),
+      h('button', { class: 'iconbtn', title: 'More options for this section', 'data-menu-anchor': '', html: ICON_MORE, onClick: (e) => showMenu(e.currentTarget, [
+        si > 0 ? { label: 'Join with the section above', sub: 'Remove this heading; its questions carry on the section above', onClick: () => { S.joinWithAbove(prep, si); ctx.ui.sel = null; ctx.commit(); } } : null,
+        si === 0 && last === 0 ? { label: 'Remove the section heading', sub: 'Number the questions 1, 2, 3 again', onClick: () => { S.joinWithAbove(prep, si); ctx.ui.sel = null; ctx.commit(); } } : null,
+        { label: 'Remove the section and its questions', sub: `${n} question${n === 1 ? '' : 's'}`, danger: true, onClick: async () => { if (!(await confirmBox({ title: `Remove section ${sec.letter}?`, message: `Its ${n} question${n === 1 ? '' : 's'} are removed from this ${prep.draft ? 'preset' : 'prep'}. You can bring them back with Undo.`, confirmLabel: 'Remove', danger: true }))) return; S.removeSection(prep, si); ctx.ui.sel = null; ctx.commit(); } },
+      ].filter(Boolean)) })));
+}
+function addSection() {
+  const prep = ctx.prep, had = S.hasSections(prep), nq = prep.questions.length;
+  openPlanDialog({ title: 'New section', note: nq && !had ? 'The questions already on the sheet become section A; this one follows as section B.' : null,
+    onDone: ({ plan, title }) => {
+      try {
+        const made = buildSection(prep, plan, title);
+        ctx.ui.sel = null; ctx.commit();
+        toast(`Section ${S.sectionLetter(S.sectionsOf(prep).length - 1)} added: ${made.length} question${made.length === 1 ? '' : 's'}.`, 5000, { label: 'Undo', onClick: () => ctx.undo() });
+      } catch (e) { toast('Could not build the section: ' + e.message, 7000); }
+    } });
+}
+function editPlan(si) {
+  const prep = ctx.prep, info = S.sectionsOf(prep)[si]; if (!info) return;
+  const had = info.sec.plan;
+  openPlanDialog({ title: `Section ${info.letter}`, confirmLabel: 'Rebuild section', plan: had || null, secTitle: info.sec.title || '',
+    note: `The ${info.end - info.start} question${info.end - info.start === 1 ? '' : 's'} in this section are replaced by the new plan.${prep.questions.slice(info.start, info.end).some(q => q.slots.some(s => s.locked || s.edits)) ? ' Some are locked or edited: those are replaced too (Undo brings them back).' : ''}`,
+    onDone: ({ plan, title }) => {
+      try { rebuildSection(prep, si, plan, title); ctx.ui.sel = null; ctx.commit(); toast(`Section ${info.letter} rebuilt.`, 5000, { label: 'Undo', onClick: () => ctx.undo() }); }
+      catch (e) { toast('Could not rebuild the section: ' + e.message, 7000); }
+    } });
 }
 // A question that has versions (say a two-part BIDMAS question OR a Substitution question) shows which one it is; click another to switch.
 function versionBar(q, qi) {
@@ -130,9 +178,9 @@ function versionBar(q, qi) {
 }
 function addVersionTo(qi) {
   const prep = ctx.prep;
-  openQuickChooser({ title: `Another version of question ${qi + 1}`, confirmLabel: 'Add version', onBrowse: null, shared: sharedFor(prep),
+  openQuickChooser({ title: `Another version of question ${lab(qi)}`, confirmLabel: 'Add version', onBrowse: null, shared: sharedFor(prep),
     note: 'Version rules: a prep made from this preset shows just one of the versions of this question, chosen at random. You can add further parts to this version afterwards, with + Add a part.',
-    onDone: (def) => { try { addVersion(prep, qi, def); ctx.ui.sel = { q: qi, k: 0 }; ctx.commit(); toast(`Question ${qi + 1} now has ${prep.questions[qi].versions.length} versions. Use the numbers beside the question number to move between them.`, 7000); } catch (e) { toast(e.message, 6000); } } });
+    onDone: (def) => { try { addVersion(prep, qi, def); ctx.ui.sel = { q: qi, k: 0 }; ctx.commit(); toast(`Question ${lab(qi)} now has ${prep.questions[qi].versions.length} versions. Use the numbers beside the question number to move between them.`, 7000); } catch (e) { toast(e.message, 6000); } } });
 }
 // The Marks header carries an eye: hide or show the marks on the printed sheet (the marks themselves stay editable)
 function marksHead() {
@@ -185,7 +233,7 @@ function detailPanel(q, qi, slot, si, cq, part) {
   return h('div', { class: 'detail' },
     h('div', { class: 'dside' },
       h('button', { class: 'iconbtn boxed' + (slot.locked ? ' on' : ''), title: slot.locked ? 'Locked: re-roll will not change this. Click to unlock' : 'Lock: stop re-roll changing this question', html: slot.locked ? ICON_LOCK : ICON_UNLOCK, onClick: () => { slot.locked = !slot.locked; ctx.commit(); } }),
-      canRemove ? h('button', { class: 'iconbtn danger', title: q.slots.length > 1 ? 'Remove this part' : 'Remove this question', html: ICON_BIN, onClick: async () => { if (!(await confirmBox({ title: q.slots.length > 1 ? 'Remove this part?' : `Remove question ${qi + 1}?`, message: q.slots.length > 1 ? 'It is removed from the question. You can bring it back with Undo.' : 'The question is removed from this prep. You can bring it back with Undo.', confirmLabel: 'Remove', danger: true }))) return; P.removeSlot(prep, qi, si); ctx.ui.sel = null; ctx.commit(); } }) : null),
+      canRemove ? h('button', { class: 'iconbtn danger', title: q.slots.length > 1 ? 'Remove this part' : 'Remove this question', html: ICON_BIN, onClick: async () => { if (!(await confirmBox({ title: q.slots.length > 1 ? 'Remove this part?' : `Remove question ${cq.n}?`, message: q.slots.length > 1 ? 'It is removed from the question. You can bring it back with Undo.' : 'The question is removed from this prep. You can bring it back with Undo.', confirmLabel: 'Remove', danger: true }))) return; P.removeSlot(prep, qi, si); ctx.ui.sel = null; ctx.commit(); } }) : null),
     h('div', { class: 'dpath' }, h('b', {}, pickTopic), isQuery ? h('span', { class: 'tag lvtag', title: isRange(slot.def) ? 'A range of the difficulty ladder: ⤮ draws another question from it' : `${slot.def.level} level: ⤮ draws another question from this topic at this level` }, isRange(slot.def) ? 'range' : slot.def.level) : null, pickRest ? h('span', { class: 'dpath-rest' }, ' › ' + pickRest) : null, slot.meta && slot.meta.multipart ? h('span', { class: 'tag' }, 'multipart') : null, slot.locked ? h('span', { class: 'tag lock' }, 'locked') : null),
     anyOpt ? h('div', { class: 'hint' }, `A different option comes up each time you re-roll. This one is: ${slot.meta.label}.`) : null,
     range ? h('div', { class: 'hint' }, range) : null,
@@ -200,7 +248,8 @@ function detailPanel(q, qi, slot, si, cq, part) {
       abtn(ICON_EDIT, 'Edit', () => openEditDialog(slot, () => ctx.commit()), 'Change the wording or the answer'),
       h('button', { class: 'abtn', title: 'More options', 'data-menu-anchor': '', onClick: (e) => showMenu(e.currentTarget, [
         { label: '+ Add a part', onClick: () => addPart(qi) },
-        { label: 'Duplicate this question', sub: 'Same topics, options and pools; a fresh sample', onClick: () => { duplicateQuestion(prep, qi); ctx.ui.sel = { q: qi + 1, k: 0 }; ctx.commit(); toast(`Question ${qi + 1} copied as question ${qi + 2}.`, 4000, { label: 'Undo', onClick: () => ctx.undo() }); } },
+        !q.sec ? { label: 'Start a new section here', sub: qi === 0 ? 'Section A begins at this question' : 'This question and the ones below it become a new section', onClick: () => { S.startSection(prep, qi, ''); ctx.ui.sel = { q: qi, k: 0 }; ctx.commit(); } } : null,
+        { label: 'Duplicate this question', sub: 'Same topics, options and pools; a fresh sample', onClick: () => { duplicateQuestion(prep, qi); ctx.ui.sel = { q: qi + 1, k: 0 }; ctx.commit(); toast(`Question ${qi + 1} copied as question ${lab(qi + 1)}.`, 4000, { label: 'Undo', onClick: () => ctx.undo() }); } },
         prep.draft ? { label: 'Add another version of this question…', sub: 'It will be this question OR the new one, chosen at random for each prep', onClick: () => addVersionTo(qi) } : null,
         prep.draft && q.versions && q.versions.length > 1 ? { label: 'Remove this version', sub: `Delete version ${q.version + 1} of ${q.versions.length}`, onClick: async () => { if (!(await confirmBox({ title: `Remove version ${q.version + 1}?`, message: 'This version of the question is removed from the preset. You can bring it back with Undo.', confirmLabel: 'Remove', danger: true }))) return; removeVersion(prep, qi); ctx.ui.sel = { q: qi, k: 0 }; ctx.commit(); } } : null,
         q.slots.length > 1 ? { label: 'Make this its own question', sub: 'Take it out of the multipart question', onClick: () => { const nq = P.splitSlot(prep, qi, si); ctx.ui.sel = nq === null ? null : { q: nq, k: 0 }; ctx.commit(); } } : null,
@@ -211,7 +260,7 @@ function detailPanel(q, qi, slot, si, cq, part) {
         isPool ? { label: 'Stop being a pool', sub: 'Re-roll keeps this kind of question', onClick: () => { slot.def = { mode: 'fixed', pick: slot.pick }; ctx.commit(); } } : null,
         anyOpt ? { label: 'Keep this option', sub: 'Stop changing option when you re-roll', onClick: () => { slot.def = { mode: 'fixed', pick: slot.pick }; ctx.commit(); } } : null,
         { sep: true },
-        q.slots.length > 1 ? { label: 'Remove the whole question', sub: `All ${q.slots.length} parts of question ${qi + 1}`, onClick: async () => { if (!(await confirmBox({ title: `Remove question ${qi + 1}?`, message: 'The whole question is removed from this prep. You can bring it back with Undo.', confirmLabel: 'Remove', danger: true }))) return; prep.questions.splice(qi, 1); ctx.ui.sel = null; ctx.commit(); } } : null,
+        q.slots.length > 1 ? { label: 'Remove the whole question', sub: `All ${q.slots.length} parts of question ${lab(qi)}`, onClick: async () => { if (!(await confirmBox({ title: `Remove question ${cq.n}?`, message: 'The whole question is removed from this prep. You can bring it back with Undo.', confirmLabel: 'Remove', danger: true }))) return; S.removeQuestionAt(prep, qi); ctx.ui.sel = null; ctx.commit(); } } : null,
         { label: 'Reset marks and lines', onClick: () => { slot.marksManual = slot.marksManual.map(() => false); slot.linesManual = slot.linesManual.map(() => false); P.reseed(slot, slot.seed); ctx.commit(); } },
       ].filter(Boolean)) }, h('span', { html: ICON_MORE }), 'More'))),
     slot.meta.integer ? h('label', { class: 'dint' }, h('input', { type: 'checkbox', checked: flagsInt, onChange: () => { P.setFlags(slot, { integer: !flagsInt }); ctx.commit(); } }), ' Integer answers only') : null);
@@ -255,16 +304,16 @@ function changeSlot(q, qi, slot) {
   const prep = ctx.prep;
   const simple = () => {
     const def = slot.def.mode === 'query' || slot.def.mode === 'pool' ? slot.def : P.queryOfPick(slot.pick);
-    openQuickChooser({ title: `Choose a question for ${qi + 1}`, confirmLabel: 'Use this question', def, onBrowse: browse,
+    openQuickChooser({ title: `Choose a question for ${lab(qi)}`, confirmLabel: 'Use this question', def, onBrowse: browse,
       shared: sharedFor(prep),
       onDone: (d) => { if (d.mode === 'pool') setSlotPool(prep, slot, d, { redraw: true }); else P.setQuery(prep, slot, d, { redraw: true }); ctx.commit(); } });
   };
-  const browse = () => openPicker({ title: `Choose a question for ${qi + 1}`, current: slot.pick, onSimple: simple, onPick: (c) => { P.applyChoice(slot, c); ctx.commit(); } });
+  const browse = () => openPicker({ title: `Choose a question for ${lab(qi)}`, current: slot.pick, onSimple: simple, onPick: (c) => { P.applyChoice(slot, c); ctx.commit(); } });
   if (slot.def.mode === 'query' || slot.def.mode === 'pool') simple(); else browse();
 }
 function addPart(qi) {
   const prep = ctx.prep, q = prep.questions[qi];
-  const simple = () => openQuickChooser({ title: `Add a part to question ${qi + 1}`, confirmLabel: 'Add part', onBrowse: browse, shared: sharedFor(prep), onDone: (def) => { addPartFromDef(prep, q, def); ctx.commit(); } });
-  const browse = () => openPicker({ title: `Add a part to question ${qi + 1}`, confirmLabel: 'Add part', onSimple: simple, onPick: (c) => { const s = P.addSlotToQuestion(prep, q, c.pick); P.applyChoice(s, c); ctx.commit(); } });
+  const simple = () => openQuickChooser({ title: `Add a part to question ${lab(qi)}`, confirmLabel: 'Add part', onBrowse: browse, shared: sharedFor(prep), onDone: (def) => { addPartFromDef(prep, q, def); ctx.commit(); } });
+  const browse = () => openPicker({ title: `Add a part to question ${lab(qi)}`, confirmLabel: 'Add part', onSimple: simple, onPick: (c) => { const s = P.addSlotToQuestion(prep, q, c.pick); P.applyChoice(s, c); ctx.commit(); } });
   browse();
 }

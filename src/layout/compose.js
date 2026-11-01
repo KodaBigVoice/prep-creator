@@ -12,7 +12,9 @@ export function slotParts(slot) {
   });
 }
 
-export function composeQuestion(q, n) {
+import { labelsOf, sectionsOf, headingText } from '../data/sections.js';
+
+export function composeQuestion(q, n, section = null) {
   const parts = [];
   let ownStem = null;
   q.slots.forEach((slot, si) => {
@@ -42,15 +44,17 @@ export function composeQuestion(q, n) {
   // a single part never gets a label unless the type is a multi-part chain
   const label = parts.length > 1;
   return {
-    n, stem,
+    n, stem, section,
     calc: parts.some(p => p.calc),
     parts: parts.map((p, i) => ({ ...p, text: texts[i], l: label ? LETTERS[i] : '' })),
     marks: parts.reduce((a, p) => a + p.marks, 0),
   };
 }
 
+// Questions are labelled 1, 2, 3... or, with sections, A1, A2, B1... The first question of a section carries its heading.
 export function composePrep(prep) {
-  return prep.questions.map((q, i) => composeQuestion(q, i + 1));
+  const labels = labelsOf(prep), heads = new Map(sectionsOf(prep).map(s => [s.start, { letter: s.letter, title: s.sec.title || '', text: headingText(s.letter, s.sec.title) }]));
+  return prep.questions.map((q, i) => composeQuestion(q, labels[i], heads.get(i) || null));
 }
 export const totalMarks = (qs) => qs.reduce((a, q) => a + q.marks, 0);
 

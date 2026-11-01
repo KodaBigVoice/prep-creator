@@ -1,4 +1,5 @@
 // Building and changing a prep: slots, pools, re-rolling, random preps.
+import { removeQuestionAt, moveQuestionBy } from './sections.js';
 import { makeRng, newSeed } from '../core/rng.js';
 import { generate, parsePick, typeById, TYPES, defaultFlags, canon } from '../core/engine.js';
 import { setById, defaultRubric } from './sets.js';
@@ -366,12 +367,9 @@ export function addQuestionDef(prep, def, index = null) {
 }
 export function removeSlot(prep, qi, si) {
   const q = prep.questions[qi]; q.slots.splice(si, 1);
-  if (!q.slots.length) prep.questions.splice(qi, 1);
+  if (!q.slots.length) removeQuestionAt(prep, qi);
 }
-export function moveQuestion(prep, qi, dir) {
-  const j = qi + dir; if (j < 0 || j >= prep.questions.length) return;
-  [prep.questions[qi], prep.questions[j]] = [prep.questions[j], prep.questions[qi]];
-}
+export const moveQuestion = (prep, qi, dir) => moveQuestionBy(prep, qi, dir);          // returns the new index (a question that crosses into the next section keeps its place in the order)
 
 // Make question qi a further part of its neighbour (dir -1: the question above, +1: the one below)
 export function mergeQuestion(prep, qi, dir) {
@@ -380,7 +378,7 @@ export function mergeQuestion(prep, qi, dir) {
   const firstSlot = dir < 0 ? b.slots.length : 0;
   if (!prep.draft) { delete a.versions; delete a.version; delete b.versions; delete b.version; }
   if (dir < 0) b.slots.push(...a.slots); else b.slots.unshift(...a.slots);
-  prep.questions.splice(qi, 1);
+  removeQuestionAt(prep, qi);
   return { q: dir < 0 ? j : qi, firstSlot };
 }
 // Take one part out of a multipart question and make it a question of its own (placed after)

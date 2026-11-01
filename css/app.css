@@ -377,3 +377,28 @@ body.resizing{cursor:col-resize;user-select:none}
 .cvmv .iconbtn{width:22px;height:20px;padding:0;font-size:12px}
 .iconbtn.eye{width:26px;height:26px;padding:0;display:inline-grid;place-items:center;color:var(--ink)}
 .iconbtn.eye.off{color:var(--accent)}
+
+/* sections and the plan dialog */
+.sec-head{display:flex;align-items:center;gap:10px;margin:14px 0 6px;padding:6px 10px;background:#eef3fb;border:1px solid #cfdaee;border-radius:var(--radius)}
+.sec-head:first-of-type{margin-top:0}
+.sec-letter{font-weight:700;white-space:nowrap}
+.sec-title{flex:1;min-width:120px;border:1px solid transparent;background:transparent;font:inherit;padding:3px 6px;border-radius:6px}
+.sec-title:hover,.sec-title:focus{border-color:var(--line);background:#fff}
+.sec-head .acts{display:inline-flex;align-items:center;gap:4px;margin-left:auto}
+.plan{display:flex;flex-direction:column;gap:10px;min-width:0}
+.plan-top{display:grid;grid-template-columns:1.4fr 1fr auto;gap:12px;align-items:end}
+.plan-top .fl{display:flex;flex-direction:column;gap:3px;font-size:12px;color:var(--muted)}
+.plan-top input,.plan-top select{font:inherit;padding:5px 8px;border:1px solid var(--line);border-radius:6px;background:#fff;color:var(--ink,#111)}
+.plan-n{flex-direction:column}.plan-n input{width:64px}
+.plan-lv{align-items:center}
+.plan-sum{font-size:13px;color:var(--muted)}
+.plan-opts{max-height:46vh;overflow:auto;border:1px solid var(--line);border-radius:var(--radius);background:#fff}
+.plan-opt{display:flex;align-items:center;gap:8px;padding:4px 8px;border-bottom:1px solid var(--line2);font-size:13px}
+.plan-opt label{display:grid;grid-template-columns:20px 1fr auto;align-items:center;gap:6px;flex:1;cursor:pointer;min-width:0}
+.plan-opt small{color:var(--muted);font-size:11px}
+.plan-opt.on{background:#f4f8ff}
+.plan-cnt{display:inline-flex;align-items:center;gap:8px;min-width:130px;justify-content:flex-end}
+.plan-cnt .stepper input{width:30px;text-align:center;border:0}
+@media (max-width:700px){.plan-top{grid-template-columns:1fr}}
+.sec-head{flex-wrap:wrap;row-gap:4px}
+.sec-head .sec-title{order:3;flex:1 0 100%}

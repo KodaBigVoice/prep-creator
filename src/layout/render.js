@@ -21,6 +21,7 @@ export const CALC = '<span class="calc">CALCULATOR</span>';
 const isFrac = (t) => /dfrac/.test(t);
 
 // ---- questions only -------------------------------------------------------
+const secHeadHTML = (q) => (q.section ? `<div class="sechead"><b>Section ${q.section.letter}</b>${q.section.title ? `<span>${esc(q.section.title)}</span>` : ''}</div>` : '');
 export function qoHTML(q, katex, { stemNoNum } = {}) {
   const T = (s) => mathToHTML(s, katex);
   const calcInStem = q.calc && q.stem;
@@ -30,7 +31,7 @@ export function qoHTML(q, katex, { stemNoNum } = {}) {
     const label = p.l ? `<div>(${p.l})</div>` : '';
     return `<div class="part${p.l ? '' : ' nolabel'}${isFrac(p.text) ? ' fr' : ''}">${label}<div>${calcHere ? CALC : ''}${T(p.text)}</div><div class="mk">[${p.marks}]</div></div>`;
   }).join('');
-  return `<div class="q"><div class="num">${q.n}.</div><div class="qmain">${lead}${parts}</div></div>`;
+  return `${secHeadHTML(q)}<div class="q"><div class="num">${q.n}.</div><div class="qmain">${lead}${parts}</div></div>`;
 }
 
 // ---- answer on sheet ------------------------------------------------------
@@ -41,6 +42,7 @@ export function aosHTML(unit, q, katex, { lineMM, factors, first, textOnly }) {
   let numShown = !unit.firstOfQuestion;
   const num = () => { const h = numShown ? '' : `<div class="num" style="grid-column:1">${q.n}.</div>`; numShown = true; return h; };
   let cls = () => (rows.length === 0 && unit.firstOfQuestion && !first ? 'qstart' : '');
+  if (unit.firstOfQuestion && q.section) rows.push(`<div class="frow sechead ${cls()}"><b>Section ${q.section.letter}</b>${q.section.title ? `<span>${esc(q.section.title)}</span>` : ''}</div>`);
   if (unit.firstOfQuestion && q.stem) {
     rows.push(`<div class="frow ${cls()}">${num()}<div style="grid-column:2/4">${q.calc ? CALC : ''}${T(q.stem)}</div></div>`);
   }

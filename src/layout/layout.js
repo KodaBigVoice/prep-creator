@@ -42,7 +42,7 @@ function buildQuestionPages(prep, L, katex, doc) {
   const mt = Math.max(FLOORS.margin, L.mt), mb = Math.max(FLOORS.margin, L.mb), mx = Math.max(FLOORS.margin, L.mx);
   const vars = (pt) => `--fs:${pt}pt;--lh:${L.lh};--mt:${mt}mm;--mx:${mx}mm;--mb:${mb}mm`;
   const showName = mode === 'aos' && L.nameLine;
-  const nm = L.marks === false ? ' nomarks' : '';
+  const nm = (L.marks === false ? ' nomarks' : '') + (qs.some(q => q.section) ? ' secnum' : '');
 
   // Heights of: page-1 header, running header
   const probe = (pt, inner) => {
