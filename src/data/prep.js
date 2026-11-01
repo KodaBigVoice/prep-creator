@@ -4,7 +4,7 @@ import { generate, parsePick, typeById, TYPES, defaultFlags, canon } from '../co
 import { setById, defaultRubric } from './sets.js';
 import { avoidFor, newAvoid, sceneOfSlot, clash, CLASHES } from './fresh.js';
 import { poolByTopic, poolChoices, choiceOptions, upgradePool } from './pools.js';
-import { resolve, step, ladder, topicsOf, levelOf, byKey, isRange } from './query.js';
+import { resolve, step, ladder, topicsOf, levelOf, byKey, isRange, nonCalcOnly, needsCalc, setNonCalc } from './query.js';
 
 let _id = 0;
 export const uid = () => `s${Date.now().toString(36)}${(_id++).toString(36)}${Math.floor(Math.random() * 1e4).toString(36)}`;
@@ -14,7 +14,9 @@ function resolvePick(pick, r) {
   if (!pick.endsWith(':*')) return pick;
   const t = typeById[canon(pick.slice(0, -2))];
   if (!t) return null;
-  return `${t.id}:${r.pick(t.variants).id}`;
+  let vs = t.variants;
+  if (nonCalcOnly()) { const nc = vs.filter(v => !needsCalc(`${t.id}:${v.id}`)); if (nc.length) vs = nc; }
+  return `${t.id}:${r.pick(vs).id}`;
 }
 export const topicOfPick = (pick) => { const p = parsePick(pick.replace(/:\*$/, '')); return p ? p.t.topic : null; };
 
@@ -178,6 +180,7 @@ function drawVersion(preset, defs, state, rng) {
   };
 }
 export function prepFromPreset(preset, setId, name, rng = makeRng(newSeed())) {
+  setNonCalc(false);                                   // a new prep starts with calculator questions allowed
   const set = setById[setId], state = newDrawState();
   const questions = preset.questions.map((defs) => drawQuestion(preset, defs, state, rng)).filter(q => q.slots.length);
   prepFromPreset.problems = state.problems;
@@ -391,6 +394,7 @@ export function splitSlot(prep, qi, si) {
 
 // Random prep: calculation questions first (shared stems), then worded, then problem solving last
 export function randomPrep(setId, name) {
+  setNonCalc(false);
   const set = setById[setId];
   const rng = makeRng(newSeed());
   const level = set.level;
@@ -415,4 +419,19 @@ export function randomPrep(setId, name) {
   for (let i = 0; i < nWord; i++) questions.push({ id: uid(), slots: [slotFor(pickType(worded))] });
   for (let i = 0; i < nPS; i++) { const t = ps[0]; questions.push({ id: uid(), slots: [slotFor(t)] }); }
   return newPrep({ set: setId, name, minutes: set.minutes, presetId: null, questions });
+}
+
+// Switching to "non-calculator only": every question that is not hand-picked and needs a calculator is replaced by one that does not.
+// Hand-picked questions stay (the person chose them); their question numbers are returned so they can be told.
+export function applyNonCalc(prep) {
+  let replaced = 0; const kept = [];
+  prep.questions.forEach((q, qi) => {
+    for (const s of q.slots) {
+      if (!needsCalc(s.pick)) continue;
+      const swappable = !s.locked && (s.def.mode === 'query' || s.def.mode === 'pool' || (s.def.pick && s.def.pick.endsWith(':*')));
+      if (swappable) { try { rerollSlot(prep, s); if (!needsCalc(s.pick)) { replaced++; continue; } } catch (e) { /* fall through */ } }
+      if (!kept.includes(qi + 1)) kept.push(qi + 1);
+    }
+  });
+  return { replaced, kept };
 }

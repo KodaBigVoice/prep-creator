@@ -1,3 +1,4 @@
+import { setNonCalc } from '../data/query.js';
 // Shared app state. Modules read and change this, then call ctx.commit().
 export const ctx = {
   store: null, prep: null, layout: null, katex: window.katex,
@@ -5,6 +6,7 @@ export const ctx = {
   hooks: { toolbar() {}, builder() {}, preview() {}, status() {} },
   dirty: false,
   commit({ toolbar = false, builder = true, preview = true, dirty = true } = {}) {
+    setNonCalc(this.prep && this.prep.calcMode === 'non');        // the calculator setting belongs to the prep on screen
     if (dirty) this.dirty = true;
     if (toolbar) this.hooks.toolbar();
     if (builder) this.hooks.builder();

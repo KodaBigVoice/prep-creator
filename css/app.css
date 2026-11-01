@@ -359,3 +359,21 @@ body.resizing{cursor:col-resize;user-select:none}
 .marksh .eye{width:20px;height:20px;padding:0;border:0;background:transparent;color:var(--muted);display:inline-grid;place-items:center;border-radius:4px}
 .marksh .eye:hover{background:#eef1f5;color:var(--ink)}
 .marksh .eye[aria-pressed=true]{color:var(--accent)}
+
+/* Paper tab */
+.cvlist.dim{opacity:.55}
+.cvrow{display:grid;grid-template-columns:26px 1fr;gap:6px;align-items:start;margin:8px 0}
+.cvrow.off .cvin input,.cvrow.off .cvin select{opacity:.5}
+.cvin{display:flex;flex-direction:column;gap:3px;min-width:0}
+.cvin input[type=text],.cvin select{width:100%}
+.cvl{font-size:12px;color:var(--muted)}
+.cvhead{display:grid;grid-template-columns:26px 1fr;gap:6px;align-items:center;margin:12px 0 4px}
+.cvbul{margin-left:0;display:flex;flex-direction:column;gap:6px}
+.cvbul.dim{opacity:.55}
+.cvb{display:grid;grid-template-columns:26px 1fr auto;gap:6px;align-items:start}
+.cvb.off textarea{opacity:.5}
+.cvb textarea{width:100%;resize:vertical;font-size:12.5px}
+.cvmv{display:flex;flex-direction:column;gap:2px}
+.cvmv .iconbtn{width:22px;height:20px;padding:0;font-size:12px}
+.iconbtn.eye{width:26px;height:26px;padding:0;display:inline-grid;place-items:center;color:var(--ink)}
+.iconbtn.eye.off{color:var(--accent)}

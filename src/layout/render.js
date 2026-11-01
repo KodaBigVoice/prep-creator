@@ -1,5 +1,6 @@
 // HTML for the printed sheets. Math is written {{like this}} in the question text.
 import { LOGO_URI } from '../data/logo.js';
+import { richText, markBoxParts } from '../data/cover.js';
 const esc = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;');
 
 export function mathToHTML(s, katex) {
@@ -71,4 +72,22 @@ export function runHeadHTML(prep, page) {
 export function answersHTML(prep, rows, katex, pageCount, { logo = false } = {}) {
   const body = rows.map(r => `<tr><td class="c1">${r.ref}</td><td class="c2">${katex.renderToString(r.a, { throwOnError: false })}${r.edited ? '<span class="by-hand">written by you</span>' : ''}</td><td class="c3">${mathToHTML(r.w, katex)}</td></tr>`).join('');
   return `<div class="head${logo ? ' has-logo' : ''}"><h1>${esc(prep.name)} – Answers</h1>${logo ? logoHTML() : ''}</div><hr class="rule"><table class="at"><thead><tr><th class="c1">Q</th><th class="c2">Answer</th><th class="c3">Working</th></tr></thead><tbody>${body}</tbody></table>`;
+}
+
+// ---- cover page -------------------------------------------------------------
+// Every field is optional (c.<field>.on). `total` is the paper's total marks.
+export function coverHTML(prep, total) {
+  const c = prep.cover, e = (t) => esc(t);
+  const ctxT = { minutes: prep.minutes, calcOnly: prep.calcMode === 'non' };
+  const out = [];
+  if (c.logo.on) out.push(`<img class="cv-logo" src="${LOGO_URI}" alt="">`);
+  if (c.topLine.on && c.topLine.text) out.push(`<div class="cv-top">${e(c.topLine.text)}</div>`);
+  if (c.title.on && c.title.text) out.push(`<h1 class="cv-title">${e(c.title.text)}</h1>`);
+  if (c.subtitle.on && c.subtitle.text) out.push(`<div class="cv-sub">${e(c.subtitle.text)}</div>`);
+  const bullets = c.bullets.filter(b => b.on && b.text.trim());
+  if (c.box.on && bullets.length) out.push(`<ul class="cv-box">${bullets.map(b => `<li>${richText(b.text, ctxT)}</li>`).join('')}</ul>`);
+  const fields = ['name', 'set', 'date'].filter(k => c[k].on).map(k => `<div class="cv-f cv-${k}"><b>${e(c[k].label)}:</b><span></span></div>`);
+  if (fields.length) out.push(`<div class="cv-fields">${fields.join('')}</div>`);
+  if (c.mark.on) out.push(`<div class="cv-marks">${markBoxParts(c.mark.style, total).map(m => `<div class="cv-mark"><b>${e(m.label)}</b><i>${e(m.tail)}</i></div>`).join('')}</div>`);
+  return out.join('');
 }

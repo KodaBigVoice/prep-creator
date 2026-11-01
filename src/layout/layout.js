@@ -1,7 +1,7 @@
 // Builds the printable pages for a prep: measures the real text with the browser, plans the pages, writes the HTML.
-import { composePrep } from './compose.js';
+import { composePrep, totalMarks } from './compose.js';
 import { planPages, planQuestionsOnly } from './paginate.js';
-import { qoHTML, aosHTML, headHTML, runHeadHTML, answersHTML } from './render.js';
+import { qoHTML, aosHTML, headHTML, runHeadHTML, answersHTML, coverHTML } from './render.js';
 import { answerRows } from './compose.js';
 
 export const DEFAULT_LAYOUT = {
@@ -25,7 +25,17 @@ function makeMeasurer(doc) {
   return host;
 }
 
+// The pages of the prep, with the cover page first when it is switched on (the cover is not counted in "Page 1, 2…").
 export function buildLayout(prep, L, katex, doc = document) {
+  const r = buildQuestionPages(prep, L, katex, doc);
+  if (prep.cover && prep.cover.on) {
+    const mt = Math.max(FLOORS.margin, L.mt), mb = Math.max(FLOORS.margin, L.mb), mx = Math.max(FLOORS.margin, L.mx);
+    r.pages.unshift(`<div class="sheet cover" style="--fs:11pt;--lh:1.5;--mt:${mt}mm;--mx:${mx}mm;--mb:${mb}mm">${coverHTML(prep, totalMarks(r.qs))}</div>`);
+    r.info.text += ' and a cover page';
+  }
+  return r;
+}
+function buildQuestionPages(prep, L, katex, doc) {
   const host = makeMeasurer(doc);
   const qs = composePrep(prep);
   const mode = L.mode;

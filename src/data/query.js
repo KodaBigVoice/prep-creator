@@ -1,7 +1,7 @@
 // Questions chosen by description rather than by name: one or more topics, plus a level, or a stretch of the ladder.
 // A query definition looks like { mode: 'query', topics: ['Substitution'], level: 'Core' }  (Quick)
 //                            or { mode: 'query', topics: [...], level: null, lo: 3.5, hi: 6.2, off: [keys] }  (Range)
-import { entries } from '../core/engine.js';
+import { entries, generate } from '../core/engine.js';
 
 export const LEVELS = ['Foundation', 'Core', 'Additional', 'Further'];
 const lvIdx = (l) => LEVELS.indexOf(l);
@@ -17,10 +17,25 @@ export function topicList() {
   for (const e of allEntries()) m.set(e.topic, (m.get(e.topic) || 0) + 1);
   return [...m].map(([name, n]) => ({ name, n })).sort((a, b) => a.name.localeCompare(b.name));
 }
+// ---- calculator questions ----
+// Whether an option needs a calculator is fixed for the option (checked in tests), so one sample tells us.
+const _calc = new Map();
+export function needsCalc(key) {
+  if (!_calc.has(key)) { let v = false; try { v = generate(key, 12345).parts.some(p => p.calc); } catch (e) { /* unknown: treat as no */ } _calc.set(key, v); }
+  return _calc.get(key);
+}
+// "Non-calculator only": while on, the options a draw can use leave out the calculator ones (a topic that has nothing else keeps them).
+let _nonCalc = false;
+export const setNonCalc = (on) => { _nonCalc = !!on; };
+export const nonCalcOnly = () => _nonCalc;
+
 // the options of some topics, easiest first (ties keep the order of the bank)
 export function ladder(topics) {
   const set = new Set(topics);
-  return allEntries().filter(e => set.has(e.topic)).sort((a, b) => a.d - b.d || a.ti - b.ti || a.vi - b.vi);
+  const all = allEntries().filter(e => set.has(e.topic)).sort((a, b) => a.d - b.d || a.ti - b.ti || a.vi - b.vi);
+  if (!_nonCalc) return all;
+  const keep = all.filter(e => !needsCalc(e.key));
+  return keep.length ? keep : all;
 }
 // how many options each level has in these topics
 export function levelCounts(topics) {

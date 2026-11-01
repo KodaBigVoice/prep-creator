@@ -54,3 +54,20 @@
 
 .sheet.qo .mk{color:#6b6b6b}
 .sheet.nomarks .mk{visibility:hidden}
+
+/* cover page */
+.sheet.cover{align-items:stretch;justify-content:center;gap:9mm;text-align:center}
+.cover .cv-logo{height:16mm;width:auto;align-self:center;margin-bottom:2mm}
+.cover .cv-top{font-size:.95em;font-weight:700;letter-spacing:.16em;text-transform:uppercase}
+.cover h1.cv-title{font-size:30pt;line-height:1.15;letter-spacing:-.02em;font-weight:700}
+.cover .cv-sub{font-size:1.1em;color:#333;margin-top:-4mm}
+.cover .cv-box{list-style:disc;text-align:left;margin:4mm 0 0;padding:7mm 9mm 7mm 14mm;border:1.4px solid #111;font-size:.98em;line-height:1.5}
+.cover .cv-box li{margin:0 0 3mm}.cover .cv-box li:last-child{margin-bottom:0}
+.cover .cv-fields{display:flex;gap:10mm;border:1.4px solid #111;padding:6mm 9mm;text-align:left}
+.cover .cv-f{display:flex;align-items:flex-end;gap:2.5mm;white-space:nowrap}
+.cover .cv-f span{flex:1;border-bottom:1px solid #111;min-width:20mm;height:5mm}
+.cover .cv-name{flex:2}.cover .cv-set{flex:1}.cover .cv-date{flex:1.2}
+.cover .cv-marks{display:flex;justify-content:flex-end;gap:6mm}
+.cover .cv-mark{position:relative;width:42mm;height:20mm;border:1.4px solid #111;text-align:left;padding:2mm 3mm}
+.cover .cv-mark b{font-size:.85em}
+.cover .cv-mark i{position:absolute;right:3mm;bottom:1.5mm;font-style:normal;font-size:1.05em;font-weight:600}

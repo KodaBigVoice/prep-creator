@@ -8,6 +8,8 @@ import * as P from '../data/prep.js';
 import * as FL from '../data/filelink.js';
 import { setHistory } from '../data/fresh.js';
 import { renderSheets, buildPdf, saveBlob } from './pdf.js';
+import { defaultCover, mergeCover, MARK_STYLES } from '../data/cover.js';
+import { setNonCalc } from '../data/query.js';
 import { buildLayout, buildAnswerPages, DEFAULT_LAYOUT, FLOORS } from '../layout/layout.js';
 import { renderBuilder } from './builder.js';
 import { openHistory, openSavePreset } from './dialogs.js';
@@ -33,6 +35,8 @@ function finishNew(prep) {
   prep.rubricText = store.settings.rubrics[prep.set] || defaultRubric(prep.minutes);
   prep.name = suggestName(set, store.preps);
   prep.nameAuto = true;
+  prep.calcMode = 'any';
+  prep.cover = { ...mergeCover(store.settings.cover, prep.set), on: false };
   return prep;
 }
 
@@ -274,12 +278,12 @@ async function doDownload(kind = downloadMode()) {
 
 // ---------- options sidebar ----------
 const sideEl = h('div', { class: 'side' });
-const TABS = [['presets', 'Presets'], ['rubric', 'Rubric'], ['layout', 'Layout'], ['history', 'History']];
+const TABS = [['presets', 'Presets'], ['paper', 'Paper'], ['rubric', 'Rubric'], ['layout', 'Layout'], ['history', 'History']];
 function renderSidebar() {
   const tab = ctx.ui.tab;
   const tabs = h('div', { class: 'tabs', role: 'tablist' }, TABS.map(([k, l]) => h('button', { role: 'tab', 'aria-selected': tab === k, onClick: () => { ctx.ui.tab = k; renderSidebar(); } }, l)));
   const body = h('div', { class: 'tabbody' });
-  ({ presets: tabPresets, rubric: tabRubric, layout: tabLayout, history: tabHistory })[tab](body);
+  ({ presets: tabPresets, paper: tabPaper, rubric: tabRubric, layout: tabLayout, history: tabHistory })[tab](body);
   setKids(sideEl, h('div', { class: 'side-h' }, h('span', {}, 'Options'), h('button', { class: 'btn small', 'data-menu-anchor': '', title: 'Start a new prep', onClick: (e) => newMenu(e.currentTarget) }, 'New ▾')), tabs, body);
 }
 function tabPresets(el) {
@@ -317,6 +321,59 @@ function tabPresets(el) {
       mine ? h('button', { class: 'btn', onClick: () => startDraft(mine.id) }, `Edit “${mine.name}”`) : null,
       cur ? h('button', { class: 'btn', onClick: () => startDraft(cur.id, { copy: true }) }, `Make my own copy of “${cur.name.replace(/ \(starter recipe\)$/, '')}”…`) : null,
       h('button', { class: 'btn', onClick: openSavePreset }, 'Save this prep as a preset…')));
+}
+
+// ---------- the Paper tab: calculators and the cover page ----------
+const EYE_ON = '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M1.5 8S4 3.6 8 3.6 14.5 8 14.5 8 12 12.4 8 12.4 1.5 8 1.5 8z"/><circle cx="8" cy="8" r="2"/></svg>';
+const EYE_OFF = '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M1.5 8S4 3.6 8 3.6c1 0 1.9.3 2.7.7M14.5 8S12 12.4 8 12.4c-1 0-1.9-.3-2.7-.7M2.5 2.5l11 11"/><path d="M6.4 6.4a2 2 0 0 0 3.2 3.2"/></svg>';
+function tabPaper(el) {
+  const prep = ctx.prep;
+  if (!prep.cover) prep.cover = { ...mergeCover(store.settings.cover, prep.set), on: false };
+  const c = prep.cover, nonCalc = prep.calcMode === 'non';
+  const changed = (redraw = false) => { store.settings.cover = JSON.parse(JSON.stringify(c)); ctx.commit({ builder: false }); if (redraw) renderSidebar(); };
+  const eye = (obj, what) => h('button', { class: 'iconbtn eye' + (obj.on ? '' : ' off'), 'aria-pressed': obj.on ? 'false' : 'true', 'aria-label': `${obj.on ? 'Hide' : 'Show'} ${what}`, title: obj.on ? `Shown on the cover. Click to hide ${what}.` : `Hidden. Click to show ${what}.`, html: obj.on ? EYE_ON : EYE_OFF, onClick: () => { obj.on = !obj.on; changed(true); } });
+  const row = (obj, what, input) => h('div', { class: 'cvrow' + (obj.on ? '' : ' off') }, eye(obj, what), h('div', { class: 'cvin' }, h('span', { class: 'cvl' }, what), input));
+  const text = (obj, key, ph = '') => h('input', { type: 'text', value: obj[key] || '', placeholder: ph, 'aria-label': ph, onInput: (e) => { obj[key] = e.target.value; if (obj.auto) obj.auto = false; changed(); } });
+  const swap = (i, j) => { if (j < 0 || j >= c.bullets.length) return; [c.bullets[i], c.bullets[j]] = [c.bullets[j], c.bullets[i]]; changed(true); };
+  setKids(el,
+    h('div', { class: 'sec' }, 'Calculators'),
+    h('div', { class: 'seg', role: 'radiogroup', 'aria-label': 'Calculator questions' },
+      [['any', 'Any'], ['non', 'Non-calculator only']].map(([v, l]) => h('button', { role: 'radio', 'aria-checked': (v === 'non') === nonCalc, onClick: () => {
+        if ((v === 'non') === nonCalc) return;
+        prep.calcMode = v;
+        let msg = '';
+        if (v === 'non') {
+          setNonCalc(true);
+          const r = P.applyNonCalc(prep);
+          msg = r.replaced ? `${r.replaced} calculator question${r.replaced === 1 ? '' : 's'} replaced.` : 'No calculator questions to replace.';
+          if (r.kept.length) msg += ` Question${r.kept.length === 1 ? '' : 's'} ${r.kept.join(', ')} ${r.kept.length === 1 ? 'was' : 'were'} picked by hand and still need${r.kept.length === 1 ? 's' : ''} a calculator.`;
+        }
+        ctx.commit({ toolbar: true }); renderSidebar();
+        if (msg) toast(msg, 8000, { label: 'Undo', onClick: () => ctx.undo() });
+      } }, l))),
+    h('div', { class: 'hint' }, 'Non-calculator only: every question you draw, re-roll or add leaves out the ones that need a calculator. Questions you pick by hand are kept. Any is the default.'),
+    h('hr'),
+    h('div', { class: 'sec' }, 'Cover page'),
+    h('label', { class: 'check' }, h('input', { type: 'checkbox', checked: !!c.on, onChange: (e) => { c.on = e.target.checked; changed(true); } }), ' Add a cover page before the questions'),
+    h('div', { class: 'hint' }, 'Use the eye on any field to hide it. In the instructions, **bold** makes bold text, {minutes} fills in the time and {calc} the calculator wording.'),
+    h('div', { class: 'cvlist' + (c.on ? '' : ' dim') },
+      row(c.topLine, 'Top line', text(c.topLine, 'text', 'e.g. YEAR 7 MICHAELMAS 2026')),
+      row(c.title, 'Title', text(c.title, 'text', 'e.g. Mathematics: Paper 1')),
+      row(c.subtitle, 'Subtitle', text(c.subtitle, 'text', 'e.g. initials')),
+      row(c.logo, 'Logo', h('span', { class: 'hint' }, 'The PMU logo at the top')),
+      h('div', { class: 'cvhead' }, eye(c.box, 'the instructions box'), h('span', { class: 'cvl' }, 'Instructions box')),
+      h('div', { class: 'cvbul' + (c.box.on ? '' : ' dim') }, c.bullets.map((b, i) => h('div', { class: 'cvb' + (b.on ? '' : ' off') },
+        eye(b, 'this instruction'),
+        h('textarea', { rows: 2, 'aria-label': 'Instruction', onInput: (e) => { b.text = e.target.value; changed(); } }, b.text),
+        h('span', { class: 'cvmv' },
+          h('button', { class: 'iconbtn', title: 'Move up', disabled: i === 0, onClick: () => swap(i, i - 1) }, '↑'),
+          h('button', { class: 'iconbtn', title: 'Move down', disabled: i === c.bullets.length - 1, onClick: () => swap(i, i + 1) }, '↓'),
+          h('button', { class: 'iconbtn danger', title: 'Delete this instruction', onClick: () => { c.bullets.splice(i, 1); changed(true); } }, '✕')))),
+        h('button', { class: 'btn small', onClick: () => { c.bullets.push({ id: 'b' + Math.random().toString(36).slice(2, 8), text: '', on: true }); changed(true); } }, '+ Add an instruction')),
+      row(c.name, 'Name line', text(c.name, 'label', 'Label')),
+      row(c.set, 'Set line', text(c.set, 'label', 'Label')),
+      row(c.date, 'Date line', text(c.date, 'label', 'Label')),
+      row(c.mark, 'Mark box', h('select', { 'aria-label': 'Mark box style', onChange: (e) => { c.mark.style = e.target.value; changed(); } }, MARK_STYLES.map(([v, l]) => h('option', { value: v, selected: c.mark.style === v }, l))))));
 }
 function tabRubric(el) {
   const prep = ctx.prep;
