@@ -1,5 +1,5 @@
 // Building and changing a prep: slots, pools, re-rolling, random preps.
-import { removeQuestionAt, moveQuestionBy } from './sections.js';
+import { removeQuestionAt, moveQuestionBy, normalizeSections } from './sections.js';
 import { makeRng, newSeed } from '../core/rng.js';
 import { generate, parsePick, typeById, TYPES, defaultFlags, canon } from '../core/engine.js';
 import { setById, defaultRubric } from './sets.js';
@@ -183,9 +183,17 @@ function drawVersion(preset, defs, state, rng) {
 export function prepFromPreset(preset, setId, name, rng = makeRng(newSeed())) {
   setNonCalc(false);                                   // a new prep starts with calculator questions allowed
   const set = setById[setId], state = newDrawState();
-  const questions = preset.questions.map((defs) => drawQuestion(preset, defs, state, rng)).filter(q => q.slots.length);
+  const questions = [], heads = new Map((preset.sections || []).map(x => [x.at, x]));
+  let pending = null;                                   // a heading whose question could not be built moves on to the next one
+  preset.questions.forEach((defs, i) => {
+    const q = drawQuestion(preset, defs, state, rng);
+    if (heads.has(i)) pending = heads.get(i) || pending;
+    if (!q.slots.length) return;
+    if (pending) { q.sec = { title: pending.title || '', ...(pending.plan ? { plan: JSON.parse(JSON.stringify(pending.plan)) } : {}) }; pending = null; }
+    questions.push(q);
+  });
   prepFromPreset.problems = state.problems;
-  return newPrep({ set: setId, name, minutes: preset.minutes ?? set.minutes, presetId: preset.id, rubricText: preset.rubricText, questions });
+  return normalizeSections(newPrep({ set: setId, name, minutes: preset.minutes ?? set.minutes, presetId: preset.id, rubricText: preset.rubricText, questions }));
 }
 export function newPrep({ set, name, minutes, presetId = null, rubricText, questions = [] }) {
   return { id: uid(), set, name, nameAuto: true, minutes, presetId, rubricOn: false, rubricText: rubricText || defaultRubric(minutes), questions, created: new Date().toISOString(), version: 1 };

@@ -53,7 +53,10 @@ export function composeQuestion(q, n, section = null) {
 
 // Questions are labelled 1, 2, 3... or, with sections, A1, A2, B1... The first question of a section carries its heading.
 export function composePrep(prep) {
-  const labels = labelsOf(prep), heads = new Map(sectionsOf(prep).map(s => [s.start, { letter: s.letter, title: s.sec.title || '', text: headingText(s.letter, s.sec.title) }]));
+  const labels = labelsOf(prep), secs = sectionsOf(prep);
+  // a single section titled like the sheet itself would only say the same thing twice
+  const dup = (s) => secs.length === 1 && (s.sec.title || '').trim().toLowerCase() === (prep.name || '').trim().toLowerCase();
+  const heads = new Map(secs.map(s => { const title = dup(s) ? '' : (s.sec.title || ''); return [s.start, { letter: s.letter, title, text: headingText(s.letter, title) }]; }));
   return prep.questions.map((q, i) => composeQuestion(q, labels[i], heads.get(i) || null));
 }
 export const totalMarks = (qs) => qs.reduce((a, q) => a + q.marks, 0);

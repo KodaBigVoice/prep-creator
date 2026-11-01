@@ -1,4 +1,5 @@
 import { setNonCalc } from '../data/query.js';
+import { curKey, layoutKey } from '../data/kind.js';
 // Shared app state. Modules read and change this, then call ctx.commit().
 export const ctx = {
   store: null, prep: null, layout: null, katex: window.katex,
@@ -13,8 +14,8 @@ export const ctx = {
     if (preview) this.hooks.preview();
     this.track();
     this.hooks.status();
-    this.store.current = this.prep;
-    this.store.settings.layout = this.layout;
+    this.store[curKey] = this.prep;
+    this.store.settings[layoutKey] = this.layout;
     this.save();
   },
   save() {},

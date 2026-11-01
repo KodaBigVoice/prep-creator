@@ -4,6 +4,7 @@ import { composeQuestion, composePrep } from '../layout/compose.js';
 import * as S from '../data/sections.js';
 import { buildSection, rebuildSection } from '../data/plan.js';
 import { openPlanDialog } from './plan.js';
+import { isWs } from '../data/kind.js';
 import { mathToHTML } from '../layout/render.js';
 import { openPicker } from './picker.js';
 import { openQuickChooser } from './quick.js';
@@ -66,7 +67,7 @@ export function renderBuilder(root) {
         { label: 'New numbers', sub: 'Every question stays; locked ones are untouched', checked: rerollMode() === 'nums', onClick: () => rerollAll('nums') },
         { label: 'New questions', sub: 'A fresh question for each Quick or pooled row (same topic and level)', checked: rerollMode() === 'questions', onClick: () => rerollAll('questions') },
       ]) }, '▾'))));
-  if (!prep.questions.length) root.append(h('div', { class: 'empty' }, prep.draft ? 'No questions yet. Add the first question of this preset: exact, a topic and level, or a pool.' : 'No questions yet. Choose a preset in the sidebar, or add a question.'));
+  if (!prep.questions.length) root.append(h('div', { class: 'empty' }, prep.draft ? 'No questions yet. Add the first question of this preset: exact, a topic and level, or a pool.' : isWs ? h('div', {}, h('p', {}, h('b', {}, 'A worksheet is built in sections.')), h('p', {}, 'Each section is one idea: choose a topic, tick the options to use, and say how many questions. They ramp from the easiest option to the hardest, and are numbered A1, A2… then B1, B2…'), h('button', { class: 'btn primary', onClick: () => addSection() }, '+ Add the first section')) : 'No questions yet. Choose a preset in the sidebar, or add a question.'));
   else root.append(h('div', { class: 'colhead' + (aos ? ' aos' : '') }, h('span'), h('span', { class: 'qh' }, 'Question'), marksHead(), aos ? h('span', { class: 'c' }, 'Lines') : null, h('span')));
 
   prep.questions.forEach((q, qi) => {
@@ -148,7 +149,8 @@ function addSection() {
     onDone: ({ plan, title }) => {
       try {
         const made = buildSection(prep, plan, title);
-        ctx.ui.sel = null; ctx.commit();
+        if (isWs && prep.nameAuto && S.sectionsOf(prep).length === 1) { prep.name = title || plan.topic; prep.nameAuto = false; }     // a one-topic worksheet is named after its topic
+        ctx.ui.sel = null; ctx.commit({ toolbar: true });
         toast(`Section ${S.sectionLetter(S.sectionsOf(prep).length - 1)} added: ${made.length} question${made.length === 1 ? '' : 's'}.`, 5000, { label: 'Undo', onClick: () => ctx.undo() });
       } catch (e) { toast('Could not build the section: ' + e.message, 7000); }
     } });

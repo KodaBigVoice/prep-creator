@@ -22,3 +22,11 @@ export function suggestName(set, history, now = new Date()) {
   }
   return `${year} Prep ${term}${max + 1}`;
 }
+
+// "Y7 Worksheet 4": one more than the highest number used so far for that year group
+export function suggestWorksheetName(set, history) {
+  const re = new RegExp(`^${set.year} Worksheet (\\d+)$`);
+  let max = 0;
+  for (const h of history) { if (h.kind !== 'worksheet') continue; const m = re.exec((h.name || '').trim()); if (m) max = Math.max(max, Number(m[1])); }
+  return `${set.year} Worksheet ${max + 1}`;
+}

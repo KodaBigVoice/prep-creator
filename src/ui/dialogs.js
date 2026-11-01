@@ -8,7 +8,8 @@ import { typeById, entries } from '../core/engine.js';
 import * as P from '../data/prep.js';
 import { presetFromPrep, sharedFor, setSlotPool } from '../data/presetdraft.js';
 import { STARTER_PRESETS } from '../data/presets.js';
-import { exportText, importText } from '../data/store.js';
+import { exportText, importText, forget } from '../data/store.js';
+import { KIND, isWs, kindOf } from '../data/kind.js';
 import { SETS, setById } from '../data/sets.js';
 
 // "type:variant" or "type:*" -> readable name
@@ -73,7 +74,7 @@ export function openHistory() {
   const area = h('div');
   let tab = 'preps', setFilter = ctx.prep.set;
   const draw = () => {
-    const tabs = h('div', { class: 'seg', role: 'tablist' }, ...[['preps', 'Saved preps'], ['presets', 'My presets']].map(([k, l]) => h('button', { 'aria-checked': tab === k, onClick: () => { tab = k; draw(); } }, l)));
+    const tabs = h('div', { class: 'seg', role: 'tablist' }, ...[['preps', isWs ? 'Saved worksheets' : 'Saved preps'], ['presets', 'My presets']].map(([k, l]) => h('button', { 'aria-checked': tab === k, onClick: () => { tab = k; draw(); } }, l)));
     const top = h('div', { style: { display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '10px', flexWrap: 'wrap' } }, tabs, h('span', { style: { flex: 1 } }),
       h('button', { class: 'btn small', onClick: () => { download(`PMU history ${new Date().toISOString().slice(0, 10)}.json`, exportText(st)); } }, 'Download history file'),
       h('label', { class: 'btn small' }, 'Open history file…', h('input', { type: 'file', accept: '.json,application/json', style: { display: 'none' }, onChange: async (e) => {
@@ -83,7 +84,7 @@ export function openHistory() {
     let content;
     if (tab === 'preps') {
       const sel = h('select', { onChange: (e) => { setFilter = e.target.value; draw(); } }, h('option', { value: '' }, 'All sets'), SETS.map(s => h('option', { value: s.id, selected: s.id === setFilter }, s.id)));
-      const rows = st.preps.filter(p => !setFilter || p.set === setFilter).sort((a, b) => (b.saved || '').localeCompare(a.saved || ''));
+      const rows = st.preps.filter(p => kindOf(p) === KIND && (!setFilter || p.set === setFilter)).sort((a, b) => (b.saved || '').localeCompare(a.saved || ''));
       content = h('div', {}, h('div', { class: 'field', style: { marginBottom: '8px' } }, h('label', {}, 'Show'), sel),
         rows.length ? h('table', { class: 'tbl' }, h('thead', {}, h('tr', {}, h('th', {}, 'Name'), h('th', {}, 'Set'), h('th', {}, 'Saved'), h('th', {}))),
           h('tbody', {}, rows.map(p => h('tr', {}, h('td', {}, p.name), h('td', {}, p.set), h('td', {}, (p.saved || '').slice(0, 10)),
@@ -93,11 +94,11 @@ export function openHistory() {
                 else if (ctx.prep.questions.length && ctx.prep.id !== p.id && !(await confirmBox({ title: 'Open this prep?', message: [`This replaces “${ctx.prep.name}” on screen with “${p.name}”.`, 'Your current prep is saved to History first.'], confirmLabel: 'Open' }))) return;
                 if (ctx.prep.id !== p.id && ctx.dirty && !ctx.prep.draft) { const cur = JSON.parse(JSON.stringify(ctx.prep)); cur.saved = new Date().toISOString(); const i = st.preps.findIndex(x => x.id === cur.id); if (i >= 0) st.preps[i] = cur; else if (cur.questions.length) st.preps.push(cur); }
                 ctx.prep = JSON.parse(JSON.stringify(p)); ctx.ui.afterLoad && ctx.ui.afterLoad(); m.close(); } }, 'Open'), ' ',
-              h('button', { class: 'btn small danger', onClick: async () => { if (!(await confirmBox({ title: 'Delete this saved prep?', message: `“${p.name}” will be removed from History. This cannot be undone.`, confirmLabel: 'Delete', danger: true }))) return; st.preps = st.preps.filter(x => x.id !== p.id); ctx.save(); draw(); } }, 'Delete')))))) : h('div', { class: 'empty' }, 'Nothing saved for this set yet. Preps are saved when you press Save or print.'));
+              h('button', { class: 'btn small danger', onClick: async () => { if (!(await confirmBox({ title: 'Delete this saved prep?', message: `“${p.name}” will be removed from History. This cannot be undone.`, confirmLabel: 'Delete', danger: true }))) return; st.preps = st.preps.filter(x => x.id !== p.id); forget(st, p.id); ctx.save(); draw(); } }, 'Delete')))))) : h('div', { class: 'empty' }, 'Nothing saved for this set yet. Preps are saved when you press Save or print.'));
     } else {
-      const rows = st.presets;
+      const rows = st.presets.filter(p => kindOf(p) === KIND);
       content = rows.length ? h('table', { class: 'tbl' }, h('thead', {}, h('tr', {}, h('th', {}, 'Preset'), h('th', {}, 'Set'), h('th', {}))),
-        h('tbody', {}, rows.map(p => h('tr', {}, h('td', {}, p.name), h('td', {}, p.set), h('td', { style: { textAlign: 'right' } }, h('button', { class: 'btn small danger', onClick: async () => { if (!(await confirmBox({ title: 'Delete this preset?', message: `The preset “${p.name}” will be removed. This cannot be undone.`, confirmLabel: 'Delete', danger: true }))) return; st.presets = st.presets.filter(x => x.id !== p.id); ctx.save(); draw(); ctx.hooks.toolbar(); } }, 'Delete')))))) : h('div', { class: 'empty' }, 'You have not saved any presets yet. Build a prep, then use + ▸ Save as preset.');
+        h('tbody', {}, rows.map(p => h('tr', {}, h('td', {}, p.name), h('td', {}, p.set), h('td', { style: { textAlign: 'right' } }, h('button', { class: 'btn small danger', onClick: async () => { if (!(await confirmBox({ title: 'Delete this preset?', message: `The preset “${p.name}” will be removed. This cannot be undone.`, confirmLabel: 'Delete', danger: true }))) return; st.presets = st.presets.filter(x => x.id !== p.id); forget(st, p.id); ctx.save(); draw(); ctx.hooks.toolbar(); } }, 'Delete')))))) : h('div', { class: 'empty' }, 'You have not saved any presets yet. Build a prep, then use + ▸ Save as preset.');
     }
     setKids(area, top, content);
   };
@@ -107,7 +108,7 @@ export function openHistory() {
 
 export function openSavePreset() {
   const prep = ctx.prep;
-  const name = h('input', { type: 'text', value: `${prep.set} preset`, style: { width: '100%' } });
+  const name = h('input', { type: 'text', value: isWs ? prep.name : `${prep.set} preset`, style: { width: '100%' } });
   const m = modal({ title: 'Save as preset', narrow: true, body: h('div', {},
     h('div', { class: 'hint', style: { marginBottom: '8px' } }, 'A preset keeps how each question is chosen (a topic and level, a range, a pool, or one exact question), the marks and working space, and the time and rubric for this set. Starter presets cannot be overwritten, so give yours its own name.'),
     h('div', { class: 'kv' }, h('label', {}, 'Name'), name)),
