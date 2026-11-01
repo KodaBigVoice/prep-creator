@@ -14,6 +14,7 @@ export const DEFAULT_LAYOUT = {
   splitParts: false,     // allow a multipart question to continue on the next page
   logo: false,           // The logo at the top right of the title row
   nameLine: true,        // Name line on the title row (answer on sheet only)
+  marks: true,           // Show the marks available, e.g. [3] (hidden marks keep their space, so nothing moves)
 };
 export const FLOORS = { pt: 10, margin: 12 };
 const PX_MM = 96 / 25.4;
@@ -31,10 +32,11 @@ export function buildLayout(prep, L, katex, doc = document) {
   const mt = Math.max(FLOORS.margin, L.mt), mb = Math.max(FLOORS.margin, L.mb), mx = Math.max(FLOORS.margin, L.mx);
   const vars = (pt) => `--fs:${pt}pt;--lh:${L.lh};--mt:${mt}mm;--mx:${mx}mm;--mb:${mb}mm`;
   const showName = mode === 'aos' && L.nameLine;
+  const nm = L.marks === false ? ' nomarks' : '';
 
   // Heights of: page-1 header, running header
   const probe = (pt, inner) => {
-    host.innerHTML = `<div class="sheet ${mode}" style="${vars(pt)};height:auto;overflow:visible">${inner}</div>`;
+    host.innerHTML = `<div class="sheet ${mode}${nm}" style="${vars(pt)};height:auto;overflow:visible">${inner}</div>`;
     return host.firstElementChild;
   };
   const measureHeads = (pt) => {
@@ -50,7 +52,7 @@ export function buildLayout(prep, L, katex, doc = document) {
   if (mode === 'qo') {
     const measureAt = (pt) => {
       const { h1, h2 } = measureHeads(pt);
-      host.innerHTML = `<div class="sheet qo" style="${vars(pt)};height:auto;overflow:visible"><div class="body" style="display:block">${qs.map(q => `<div class="mu">${qoHTML(q, katex)}</div>`).join('')}</div></div>`;
+      host.innerHTML = `<div class="sheet qo${nm}" style="${vars(pt)};height:auto;overflow:visible"><div class="body" style="display:block">${qs.map(q => `<div class="mu">${qoHTML(q, katex)}</div>`).join('')}</div></div>`;
       const units = [...host.querySelectorAll('.mu')].map((el, i) => ({ fixed: el.getBoundingClientRect().height / PX_MM, flex: 0, marks: qs[i].marks, label: qs[i].n }));
       return { units, cap1: pageInner - h1 - bodyTop, capN: pageInner - h2 - bodyTop };
     };
@@ -65,7 +67,7 @@ export function buildLayout(prep, L, katex, doc = document) {
       const gap = n > 1 ? Math.max(3, Math.min(30, 3 + pg.free / (n - 1))) : 0;
       const body = pg.idx.map((qi, k) => `<div style="margin-top:${k ? gap.toFixed(2) : 0}mm">${qoHTML(qs[qi], katex)}</div>`).join('');
       const top = pi === 0 ? headHTML(prep, katex, { rubric: true, name: false, logo: !!L.logo }) : runHeadHTML(prep, pi + 1);
-      return `<div class="sheet qo" style="${vars(pt)}">${top}<div class="body">${body}</div></div>`;
+      return `<div class="sheet qo${nm}" style="${vars(pt)}">${top}<div class="body">${body}</div></div>`;
     });
     return { pages, qs, info: { pageCount: pages.length, pt, mode, warnings: plan.warnings, overfull, text: `${pages.length} page${pages.length > 1 ? 's' : ''} · ${pt} pt text` } };
   }
@@ -79,7 +81,7 @@ export function buildLayout(prep, L, katex, doc = document) {
     if (!L.splitParts || q.parts.length < 2) units.push({ qi, pa: 0, pb: q.parts.length, firstOfQuestion: true, cont: false });
     else q.parts.forEach((p, k) => units.push({ qi, pa: k, pb: k + 1, firstOfQuestion: k === 0, cont: k > 0 }));
   });
-  host.innerHTML = `<div class="sheet aos" style="${vars(pt)};height:auto;overflow:visible"><div class="body" style="display:block">${units.map(u => `<div class="mu">${aosHTML(u, qs[u.qi], katex, { lineMM: L.lineMM, factors: 1, first: false, textOnly: true })}</div>`).join('')}</div></div>`;
+  host.innerHTML = `<div class="sheet aos${nm}" style="${vars(pt)};height:auto;overflow:visible"><div class="body" style="display:block">${units.map(u => `<div class="mu">${aosHTML(u, qs[u.qi], katex, { lineMM: L.lineMM, factors: 1, first: false, textOnly: true })}</div>`).join('')}</div></div>`;
   const textH = [...host.querySelectorAll('.mu')].map(el => el.getBoundingClientRect().height / PX_MM);
   const pu = units.map((u, i) => {
     const q = qs[u.qi]; let manual = 0, flex = 0, marks = 0;
@@ -95,7 +97,7 @@ export function buildLayout(prep, L, katex, doc = document) {
       return `<div style="margin-top:${k ? extra.toFixed(2) : 0}mm">${aosHTML(u, qs[u.qi], katex, { lineMM: L.lineMM, factors: pg.factor, first: k === 0, textOnly: false })}</div>`;
     }).join('');
     const top = pi === 0 ? headHTML(prep, katex, { rubric: true, name: showName, logo: !!L.logo }) : runHeadHTML(prep, pi + 1);
-    return `<div class="sheet aos" style="${vars(pt)}">${top}<div class="body">${body}</div></div>`;
+    return `<div class="sheet aos${nm}" style="${vars(pt)}">${top}<div class="body">${body}</div></div>`;
   });
   const fs = plan.pages.map(p => p.factor);
   const debug = { units: pu, cap1: pageInner - h1 - bodyTop, capN: pageInner - h2 - bodyTop, pages: plan.pages.map(p => ({ idx: p.idx, f: +p.factor.toFixed(2), fit: +(p.fit || 0).toFixed(2) })) };

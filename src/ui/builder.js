@@ -21,6 +21,8 @@ const ICON_BIN = SV('<path d="M2.8 4.2h10.4M6.2 4.2V2.8h3.6v1.4M4.2 4.2l.6 9h6.4
 const ICON_POOL = SV('<path d="M5.5 3.2h6.2a1.6 1.6 0 0 1 1.6 1.6v6.2"/><rect x="2.7" y="5.4" width="7.9" height="8" rx="1.6"/>');
 const ICON_SWAP = SV('<path d="M2.5 5.5h10M9.8 2.8l2.7 2.7-2.7 2.7M13.5 10.5h-10M6.2 7.8l-2.7 2.7 2.7 2.7"/>');
 const ICON_EDIT = SV('<path d="M2.8 13.2l.6-2.9 7.2-7.2a1.4 1.4 0 0 1 2 0l.3.3a1.4 1.4 0 0 1 0 2l-7.2 7.2-2.9.6zM9.6 4.1l2.3 2.3"/>');
+const ICON_EYE = SV('<path d="M1.5 8S4 3.6 8 3.6 14.5 8 14.5 8 12 12.4 8 12.4 1.5 8 1.5 8z"/><circle cx="8" cy="8" r="2"/>');
+const ICON_EYE_OFF = SV('<path d="M1.5 8S4 3.6 8 3.6c1 0 1.9.3 2.7.7M14.5 8S12 12.4 8 12.4c-1 0-1.9-.3-2.7-.7M2.5 2.5l11 11"/><path d="M6.4 6.4a2 2 0 0 0 3.2 3.2"/>');
 const ICON_MORE = '<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><circle cx="3.5" cy="8" r="1.3"/><circle cx="8" cy="8" r="1.3"/><circle cx="12.5" cy="8" r="1.3"/></svg>';
 const ICON_SHUFFLE = SV('<path d="M2 4.5h2.2c3.2 0 3.6 7 6.8 7H14M2 11.5h2.2c1 0 1.7-.7 2.3-1.6M14 4.5h-3c-1 0-1.7.7-2.3 1.6M12 2.5l2 2-2 2M12 9.5l2 2-2 2"/>');
 // difficulty: three rising bars; the filled ones are the level
@@ -61,7 +63,7 @@ export function renderBuilder(root) {
         { label: 'New questions', sub: 'A fresh question for each Quick or pooled row (same topic and level)', checked: rerollMode() === 'questions', onClick: () => rerollAll('questions') },
       ]) }, '▾'))));
   if (!prep.questions.length) root.append(h('div', { class: 'empty' }, prep.draft ? 'No questions yet. Add the first question of this preset: exact, a topic and level, or a pool.' : 'No questions yet. Choose a preset in the sidebar, or add a question.'));
-  else root.append(h('div', { class: 'colhead' + (aos ? ' aos' : '') }, h('span'), h('span', { class: 'qh' }, 'Question'), h('span', { class: 'c' }, 'Marks'), aos ? h('span', { class: 'c' }, 'Lines') : null, h('span')));
+  else root.append(h('div', { class: 'colhead' + (aos ? ' aos' : '') }, h('span'), h('span', { class: 'qh' }, 'Question'), marksHead(), aos ? h('span', { class: 'c' }, 'Lines') : null, h('span')));
 
   prep.questions.forEach((q, qi) => {
     try { drawCard(q, qi); } catch (err) {
@@ -131,6 +133,11 @@ function addVersionTo(qi) {
   openQuickChooser({ title: `Another version of question ${qi + 1}`, confirmLabel: 'Add version', onBrowse: null, shared: sharedFor(prep),
     note: 'Version rules: a prep made from this preset shows just one of the versions of this question, chosen at random. You can add further parts to this version afterwards, with + Add a part.',
     onDone: (def) => { try { addVersion(prep, qi, def); ctx.ui.sel = { q: qi, k: 0 }; ctx.commit(); toast(`Question ${qi + 1} now has ${prep.questions[qi].versions.length} versions. Use the numbers beside the question number to move between them.`, 7000); } catch (e) { toast(e.message, 6000); } } });
+}
+// The Marks header carries an eye: hide or show the marks on the printed sheet (the marks themselves stay editable)
+function marksHead() {
+  const on = ctx.layout.marks !== false;
+  return h('span', { class: 'c marksh' }, 'Marks', h('button', { class: 'iconbtn eye', 'aria-pressed': on ? 'false' : 'true', 'aria-label': on ? 'Hide the marks on the sheet' : 'Show the marks on the sheet', title: on ? 'Marks are shown on the sheet. Click to hide them.' : 'Marks are hidden on the sheet. Click to show them.', html: on ? ICON_EYE : ICON_EYE_OFF, onClick: () => { ctx.layout.marks = !on; ctx.commit({ dirty: false }); } }));
 }
 function addSimple() {
   const prep = ctx.prep;
@@ -226,15 +233,22 @@ const rerollMode = () => (ctx.store.settings.rerollMode === 'questions' ? 'quest
 function rerollAll(kind = rerollMode()) {
   const prep = ctx.prep;
   ctx.store.settings.rerollMode = kind; ctx.save();
-  let failed = 0, n = 0;
-  prep.questions.forEach(q => q.slots.forEach(s => {
+  let failed = 0, n = 0, flipped = 0;
+  // a question with versions flips to another version (unless a part of it is locked); its parts are then already fresh
+  const fresh = new Set();
+  prep.questions.forEach((q, qi) => {
+    if (!q.versions || q.versions.length < 2 || q.slots.some(s => s.locked)) return;
+    const others = q.versions.map((_, i) => i).filter(i => i !== q.version);
+    try { switchVersion(prep, qi, others[Math.floor(Math.random() * others.length)]); fresh.add(q); flipped++; } catch (e) { failed++; console.error('Version flip failed', e); }
+  });
+  prep.questions.forEach(q => fresh.has(q) ? null : q.slots.forEach(s => {
     if (s.locked) return;
     const swappable = s.def.mode === 'query' || s.def.mode === 'pool' || (s.def.pick && s.def.pick.endsWith(':*'));
     if (kind === 'questions' && !swappable) return;
     try { if (kind === 'questions') P.rerollSlot(prep, s); else P.renumber(prep, s); n++; } catch (e) { failed++; console.error('Re-roll failed', s.pick, e); }
   }));
   ctx.commit();
-  toast(failed ? `${failed} question${failed === 1 ? '' : 's'} could not be re-rolled and ${failed === 1 ? 'was' : 'were'} left as they were.` : kind === 'nums' ? 'New numbers for every question that is not locked.' : `${n} question${n === 1 ? '' : 's'} replaced.`, 5000, { label: 'Undo', onClick: () => ctx.undo() });
+  toast(failed ? `${failed} question${failed === 1 ? '' : 's'} could not be re-rolled and ${failed === 1 ? 'was' : 'were'} left as they were.` : flipped && kind === 'nums' ? `New numbers for every question that is not locked. ${flipped} question${flipped === 1 ? '' : 's'} switched to another version.` : kind === 'nums' ? 'New numbers for every question that is not locked.' : `${n} question${n === 1 ? '' : 's'} replaced.`, 5000, { label: 'Undo', onClick: () => ctx.undo() });
 }
 // Replace a question. A Quick or Range question opens the simple picker (its topic and level filled in); anything else opens the full list first. Each can switch to the other.
 function changeSlot(q, qi, slot) {

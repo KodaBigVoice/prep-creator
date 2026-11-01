@@ -353,3 +353,9 @@ body.resizing{cursor:col-resize;user-select:none}
 .vchip{min-width:24px;height:22px;padding:0 6px;border:1px solid var(--line,#cfd5e3);background:#fff;border-radius:11px;font:inherit;font-size:12px;cursor:pointer;color:var(--ink)}
 .vchip:hover{border-color:var(--accent)}
 .vchip.on{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
+
+/* eye beside the Marks header */
+.marksh{display:inline-flex;align-items:center;justify-content:center;gap:2px}
+.marksh .eye{width:20px;height:20px;padding:0;border:0;background:transparent;color:var(--muted);display:inline-grid;place-items:center;border-radius:4px}
+.marksh .eye:hover{background:#eef1f5;color:var(--ink)}
+.marksh .eye[aria-pressed=true]{color:var(--accent)}
