@@ -1,9 +1,8 @@
 import { h, $, showMenu, toast, setKids, download, confirmBox } from './dom.js';
 import { ctx } from './state.js';
-import { loadStore, saveStoreSoon, flushStore, refreshStore, handOver, exportText, importText } from '../data/store.js';
-import { KIND, isWs, kindOf, curKey, layoutKey, tagKind, PAGE, LABEL } from '../data/kind.js';
+import { loadStore, saveStoreSoon, flushStore, refreshStore, exportText, importText } from '../data/store.js';
 import { SETS, setById, defaultRubric } from '../data/sets.js';
-import { suggestName, suggestWorksheetName } from '../data/naming.js';
+import { suggestName } from '../data/naming.js';
 import { STARTER_PRESETS } from '../data/presets.js';
 import * as P from '../data/prep.js';
 import * as FL from '../data/filelink.js';
@@ -19,15 +18,11 @@ import { presetFromPrep } from '../data/presetdraft.js';
 
 const store = loadStore();
 ctx.store = store;
-// a worksheet starts as plain questions: no marks, no name line (answers go on their own sheet)
-const WS_LAYOUT = isWs ? { mode: 'qo', marks: false, nameLine: false } : {};
-ctx.layout = { ...DEFAULT_LAYOUT, ...WS_LAYOUT, ...(store.settings[layoutKey] || {}) };
-const OTHER = isWs ? 'prep' : 'worksheet';
-const WORD = isWs ? 'worksheet' : 'prep';
+ctx.layout = { ...DEFAULT_LAYOUT, ...(store.settings.layout || {}) };
 ctx.save = () => saveStoreSoon(store);
 setHistory(() => store.preps);
 
-const presetsFor = (setId) => [...STARTER_PRESETS.filter(p => p.set === setId && kindOf(p) === KIND), ...store.presets.filter(p => p.set === setId && kindOf(p) === KIND && !STARTER_PRESETS.some(s => s.id === p.id))];   // a saved copy with a starter's id is the starter
+const presetsFor = (setId) => [...STARTER_PRESETS.filter(p => p.set === setId), ...store.presets.filter(p => p.set === setId && !STARTER_PRESETS.some(s => s.id === p.id))];   // a saved copy with a starter's id is the starter
 const findPreset = (id) => STARTER_PRESETS.find(p => p.id === id) || store.presets.find(p => p.id === id);
 function withTicks(preset) {
   const t = store.ticks[preset.id]; if (!t) return preset;
@@ -38,9 +33,8 @@ function withTicks(preset) {
 function finishNew(prep) {
   const set = setById[prep.set];
   prep.rubricText = store.settings.rubrics[prep.set] || defaultRubric(prep.minutes);
-  prep.name = isWs ? suggestWorksheetName(set, store.preps) : suggestName(set, store.preps);
+  prep.name = suggestName(set, store.preps);
   prep.nameAuto = true;
-  tagKind(prep);
   prep.calcMode = 'any';
   prep.cover = { ...mergeCover(store.settings.cover, prep.set), on: false };
   return prep;
@@ -112,7 +106,7 @@ function useSet(setId, presetId = undefined) {
   const set = setById[setId];
   store.settings.lastSet = setId;
   const list = presetsFor(setId);
-  const preset = presetId ? findPreset(presetId) : (isWs ? null : list[0]);
+  const preset = presetId ? findPreset(presetId) : list[0];
   if (preset) {
     ctx.prep = finishNew(P.prepFromPreset(withTicks(preset), setId, 'x'));
     const probs = P.prepFromPreset.problems || [];
@@ -141,7 +135,7 @@ function startDraft(presetId, { copy = false } = {}) {
     prep.rubricText = store.settings.rubrics[setId] || defaultRubric(prep.minutes);
     prep.draft = { presetId: null, pools: [] };
   }
-  prep.nameAuto = false; prep.presetId = null; tagKind(prep);
+  prep.nameAuto = false; prep.presetId = null;
   ctx.stash = stash; ctx.prep = prep; ctx.ui.sidebar = true; store.settings.sidebar = true; applyWidths();
   ctx.dirty = false; afterLoad();
 }
@@ -151,7 +145,7 @@ async function saveDraft() {
   if (!name) { toast('Give the preset a name first (top left).', 4000); const nb = toolbar.querySelector('.namebox'); if (nb) nb.focus(); return; }
   if (!prep.questions.length) { toast('Add at least one question first.', 4000); return; }
   const old = prep.draft.presetId ? store.presets.find(p => p.id === prep.draft.presetId) : null;
-  const clash = store.presets.find(p => kindOf(p) === KIND && p.set === prep.set && p.name.trim().toLowerCase() === name.toLowerCase() && (!old || p.id !== old.id));
+  const clash = store.presets.find(p => p.set === prep.set && p.name.trim().toLowerCase() === name.toLowerCase() && (!old || p.id !== old.id));
   if (clash && !(await confirmBox({ title: 'Replace the preset with this name?', message: `You already have a preset called “${clash.name}” for ${prep.set}. Saving replaces it.`, confirmLabel: 'Replace it' }))) return;
   const preset = presetFromPrep(prep, { id: old ? old.id : clash ? clash.id : undefined, name, created: old ? old.created : clash ? clash.created : undefined });
   store.presets = store.presets.filter(p => p.id !== preset.id); store.presets.push(preset);
@@ -166,7 +160,7 @@ async function cancelDraft() {
   if (back && back.questions && setById[back.set]) { ctx.prep = back; ctx.dirty = false; afterLoad(); } else useSet(prep.set);
 }
 ctx.hooks.saveDraft = saveDraft; ctx.hooks.cancelDraft = cancelDraft;
-function afterLoad() { ctx.ui.sel = null; ctx.store[curKey] = ctx.prep; ctx.resetHistory(); ctx.commit({ toolbar: true }); ctx.dirty = false; ctx.hooks.status(); ctx.save(); }
+function afterLoad() { ctx.ui.sel = null; ctx.store.current = ctx.prep; ctx.resetHistory(); ctx.commit({ toolbar: true }); ctx.dirty = false; ctx.hooks.status(); ctx.save(); }
 ctx.ui.afterLoad = () => { ctx.ui.sel = null; ctx.resetHistory(); ctx.commit({ toolbar: true }); ctx.dirty = false; ctx.hooks.status(); };
 
 // ---------- top toolbar ----------
@@ -191,15 +185,14 @@ const ICON_PENCIL = '<svg width="14" height="14" viewBox="0 0 16 16" fill="none"
 const ICON_DOWNLOAD = '<svg width="17" height="17" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2.2v8.2M4.6 7.2 8 10.6l3.4-3.4M2.8 13.4h10.4"/></svg>';
 function renderToolbar() {
   const prep = ctx.prep;
-  const nameIn = h('input', { type: 'text', class: 'namebox', value: prep.name, placeholder: prep.draft ? 'Name this preset' : `Name this ${WORD}`, 'aria-label': prep.draft ? 'Preset name' : `${isWs ? 'Worksheet' : 'Prep'} name`, onInput: (e) => { prep.name = e.target.value; prep.nameAuto = false; ctx.commit({ builder: false }); } });
+  const nameIn = h('input', { type: 'text', class: 'namebox', value: prep.name, placeholder: prep.draft ? 'Name this preset' : 'Name this prep', 'aria-label': prep.draft ? 'Preset name' : 'Prep name', onInput: (e) => { prep.name = e.target.value; prep.nameAuto = false; ctx.commit({ builder: false }); } });
   const seg = (items) => h('div', { class: 'seg', role: 'radiogroup', 'aria-label': 'Print style' }, items.map(([val, label]) => h('button', { role: 'radio', 'aria-checked': ctx.layout.mode === val, onClick: () => { ctx.layout.mode = val; ctx.commit({ toolbar: true, dirty: false }); } }, label)));
   setKids(toolbar,
     h('button', { class: 'iconbtn hamburger', 'aria-label': 'Options', 'aria-pressed': !!ctx.ui.sidebar, title: ctx.ui.sidebar ? 'Hide the options panel' : 'Show the options panel', onClick: toggleSidebar },
       h('span', { html: '<svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 5h12M3 9h12M3 13h12"/></svg>' })),
     h('a', { class: 'homelink', href: './', title: 'PMU home: all your maths tools', 'aria-label': 'PMU home' }, h('img', { class: 'applogo', src: 'logo.svg', alt: 'PMU | Prep Maths Universe' })),
-    h('div', { class: 'field namefield', title: `The name of this ${WORD}. Click to rename it.` }, h('span', { class: 'penico', html: ICON_PENCIL }), nameIn),
+    h('div', { class: 'field namefield', title: 'The name of this prep. Click to rename it.' }, h('span', { class: 'penico', html: ICON_PENCIL }), nameIn),
     h('span', { class: 'sp' }),
-    h('button', { class: 'btn small ghost switchbtn', title: `Open this ${WORD} in the ${LABEL[OTHER]}: the same questions, with that page’s tools`, onClick: switchPage }, `${LABEL[OTHER]} ⇄`),
     saveStat,
     h('span', { class: 'undoredo' }, undoBtn, redoBtn),
     prep.draft ? h('button', { class: 'btn primary', title: 'Keep this preset', onClick: () => saveDraft() }, 'Save preset')
@@ -207,7 +200,7 @@ function renderToolbar() {
       h('button', { class: 'btn', onClick: () => doSave(), title: saveMode() === 'file' ? 'Save to the JSON file (and in this browser)' : 'Save in this browser' }, 'Save'),
       h('button', { class: 'btn arrow', 'aria-label': 'Save options', onClick: (e) => saveMenu(e.currentTarget) }, '▾')),
     h('span', { class: 'divider' }),
-    seg(isWs ? [['qo', 'Questions only'], ['aos', 'Answer on sheet']] : [['qo', 'Prep style'], ['aos', 'Exam style']]),
+    seg([['qo', 'Prep style'], ['aos', 'Exam style']]),
     h('span', { class: 'splitbtn' },
       h('button', { class: 'btn primary printbtn', onClick: () => doPrint(), title: PRINT_LABEL[printMode()] }, 'Print'),
       h('button', { class: 'btn primary arrow', 'aria-label': 'Print options', onClick: (e) => printMenu(e.currentTarget) }, '▾')),
@@ -219,21 +212,9 @@ function renderToolbar() {
 function newMenu(anchor) {
   const prep = ctx.prep;
   showMenu(anchor, [
-    isWs ? { label: 'New blank worksheet', onClick: async () => { if (await confirmReplace('Start a blank worksheet?', `This replaces “${prep.name}” on screen with an empty worksheet.`, 'Start blank worksheet')) blankFor(prep.set); } } : null,
-    isWs ? null : { label: 'New blank prep', onClick: async () => { if (await confirmReplace('Start a blank prep?', `This replaces “${prep.name}” on screen with an empty prep.`, 'Start blank prep')) blankFor(prep.set); } },
-    isWs ? null : { label: 'New random prep', onClick: async () => { if (await confirmReplace('Start a random prep?', `This replaces “${prep.name}” on screen with a randomly chosen prep.`, 'Make random prep')) randomFor(prep.set); } },
-  ].filter(Boolean));
-}
-// Open the work on screen in the other creator (a prep becomes a worksheet and the other way round; it moves there, with its history)
-function switchPage() {
-  const prep = ctx.prep;
-  if (prep.draft) { toast('Finish or cancel the preset first.', 4000); return; }
-  const copy = JSON.parse(JSON.stringify(prep));
-  tagKind(copy, OTHER); copy.saved = new Date().toISOString();
-  const i = store.preps.findIndex(p => p.id === copy.id);
-  if (i >= 0) store.preps[i] = copy; else store.preps.push(copy);
-  if (!handOver(store, copy, OTHER)) { toast('Could not hand this over: the browser would not save it.', 6000); return; }
-  location.href = PAGE[OTHER];
+    { label: 'New blank prep', onClick: async () => { if (await confirmReplace('Start a blank prep?', `This replaces “${prep.name}” on screen with an empty prep.`, 'Start blank prep')) blankFor(prep.set); } },
+    { label: 'New random prep', onClick: async () => { if (await confirmReplace('Start a random prep?', `This replaces “${prep.name}” on screen with a randomly chosen prep.`, 'Make random prep')) randomFor(prep.set); } },
+  ]);
 }
 function toggleSidebar() {
   ctx.ui.sidebar = !ctx.ui.sidebar; store.settings.sidebar = ctx.ui.sidebar;
@@ -280,7 +261,7 @@ async function doDownload(kind = downloadMode()) {
   downloading = true;
   store.settings.downloadMode = kind; ctx.save();
   savePrep(true); renderToolbar();
-  const prep = ctx.prep, safe = (prep.name || (isWs ? 'Worksheet' : 'Prep')).replace(/[\\/:*?"<>|]+/g, ' ').replace(/\s+/g, ' ').trim() || (isWs ? 'Worksheet' : 'Prep');
+  const prep = ctx.prep, safe = (prep.name || 'Prep').replace(/[\\/:*?"<>|]+/g, ' ').replace(/\s+/g, ' ').trim() || 'Prep';
   const t = h('div', { class: 'toast' }, 'Making the PDF…'); document.body.append(t);
   try {
     const sheets = [];
@@ -297,13 +278,13 @@ async function doDownload(kind = downloadMode()) {
 
 // ---------- options sidebar ----------
 const sideEl = h('div', { class: 'side' });
-const TABS = [['presets', 'Presets'], ['paper', 'Paper'], ['rubric', 'Rubric'], ['layout', 'Layout'], ['history', 'History']].filter(([k]) => !(isWs && k === 'rubric'));
+const TABS = [['presets', 'Presets'], ['paper', 'Paper'], ['rubric', 'Rubric'], ['layout', 'Layout'], ['history', 'History']];
 function renderSidebar() {
   const tab = ctx.ui.tab;
   const tabs = h('div', { class: 'tabs', role: 'tablist' }, TABS.map(([k, l]) => h('button', { role: 'tab', 'aria-selected': tab === k, onClick: () => { ctx.ui.tab = k; renderSidebar(); } }, l)));
   const body = h('div', { class: 'tabbody' });
   ({ presets: tabPresets, paper: tabPaper, rubric: tabRubric, layout: tabLayout, history: tabHistory })[tab](body);
-  setKids(sideEl, h('div', { class: 'side-h' }, h('span', {}, 'Options'), h('button', { class: 'btn small', 'data-menu-anchor': '', title: `Start a new ${WORD}`, onClick: (e) => newMenu(e.currentTarget) }, 'New ▾')), tabs, body);
+  setKids(sideEl, h('div', { class: 'side-h' }, h('span', {}, 'Options'), h('button', { class: 'btn small', 'data-menu-anchor': '', title: 'Start a new prep', onClick: (e) => newMenu(e.currentTarget) }, 'New ▾')), tabs, body);
 }
 function tabPresets(el) {
   const prep = ctx.prep;
@@ -329,7 +310,7 @@ function tabPresets(el) {
   setKids(el,
     h('label', { class: 'fl' }, 'Set', setSel),
     h('label', { class: 'fl' }, 'Preset', presetSel),
-    h('div', { class: 'hint' }, `Choosing a set or preset starts a new ${WORD} from it.`),
+    h('div', { class: 'hint' }, 'Choosing a set or preset starts a new prep from it.'),
     h('div', { class: 'stack' },
       h('button', { class: 'btn', onClick: async () => { if (await confirmReplace('Start again from this preset?', `This replaces “${prep.name}” on screen with a fresh prep from the preset.`, 'Start again')) useSet(prep.set, prep.presetId || undefined); } }, 'Start again from this preset')),
     h('hr'),
@@ -579,8 +560,7 @@ function init() {
   const app = $('#app');
   app.replaceChildren(toolbar, main);
   const last = store.settings.lastSet;
-  const cur0 = store[curKey];
-  if (cur0 && cur0.questions && cur0.set && setById[cur0.set] && kindOf(cur0) === KIND) { ctx.prep = cur0; ctx.dirty = false; }
+  if (store.current && store.current.questions && store.current.set && setById[store.current.set]) { ctx.prep = store.current; ctx.dirty = false; }
   else useSet(setById[last] ? last : 'Y7 Additional');
   if (ctx.prep.rubricOn === undefined) ctx.prep.rubricOn = false;
   ctx.resetHistory();
@@ -590,7 +570,7 @@ function init() {
   document.fonts && document.fonts.ready.then(() => relayout());
   window.addEventListener('resize', () => { applyWidths(); relayout(); });
   window.addEventListener('beforeunload', () => flushStore(store));
-  // coming back to this tab: pick up presets and preps saved in the other one (the creators share one store)
+  // coming back to this tab: pick up presets and preps saved in another tab (they share one store)
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') { refreshStore(store); if (!document.querySelector('.scrim')) renderSidebar(); } });
 }
 init();

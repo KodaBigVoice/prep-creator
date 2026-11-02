@@ -36,7 +36,6 @@ export function presetFromPrep(prep, { id, name, created } = {}) {
   });
   const now = new Date().toISOString();
   const preset = { id: id || 'user-' + P.uid(), set: prep.set, name, minutes: prep.minutes, rubricText: prep.rubricText, questions, created: created || now, updated: now };
-  if (prep.kind === 'worksheet') preset.kind = 'worksheet';
   const sections = prep.questions.map((q, i) => (q.sec ? { at: i, title: q.sec.title || '', ...(q.sec.plan ? { plan: copy(q.sec.plan) } : {}) } : null)).filter(Boolean);
   if (sections.length) preset.sections = sections;
   if (used.size) preset.pools = [...used.values()].map(p => ({ id: p.id, name: p.name, choices: copy(p.choices) }));

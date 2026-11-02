@@ -101,7 +101,7 @@ export const VARIANT_D = {
 
   // Equations, in ladder order (a type's position is the average of its options)
   'equations-one-step:add': 1, 'equations-one-step:times': 1.3, 'equations-one-step:div': 1.6, 'equations-one-step:neg': 2,
-  'equations-two-step:std': 2, 'equations-two-step:frac': 2.8, 'equations-two-step:neg': 3,
+  'equations-two-step:std': 2, 'equations-two-step:negc': 2.4, 'equations-two-step:cross': 2.6, 'equations-two-step:frac': 2.8, 'equations-two-step:neg': 3,
   'equations-both-sides:pos': 3.5, 'equations-both-sides:neg': 4.1,
   'equations-both-sides-right:pos': 4.1, 'equations-both-sides-right:neg': 4.7,
   'equations-both-sides-negative:one': 4.7, 'equations-both-sides-negative:both': 5.3,
