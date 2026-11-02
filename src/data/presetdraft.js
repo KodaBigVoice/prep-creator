@@ -17,7 +17,7 @@ export function slotDefOf(s, pools = []) {
     const shared = d.poolId && pools.find(p => p.id === d.poolId);
     base = shared ? { mode: 'pool', poolId: shared.id, label: shared.name }
       : { mode: 'pool', label: d.label || 'Pool', ...(d.poolId ? { poolId: d.poolId } : {}), choices: copy(poolChoices(d)) };
-  } else if (d.mode === 'query') base = copy(d);
+  } else if (d.mode === 'query' || d.mode === 'custom') base = copy(d);
   else base = { mode: 'fixed', pick: d.pick || s.pick };
   if (d.mode === 'pool' && d.link) base.link = d.link;
   delete base.marks; delete base.lines;
@@ -216,5 +216,6 @@ export function ruleText(slot, prep) {
     return shared ? `Shared pool “${d.label}” · ${n} topic${n === 1 ? '' : 's'}` : `Pool · ${n} topic${n === 1 ? '' : 's'}`;
   }
   if (d.mode === 'query') return describe(d);
+  if (d.mode === 'custom') return 'Written out in full';
   return d.pick && d.pick.endsWith(':*') ? 'Any option of this type' : 'Exact question';
 }

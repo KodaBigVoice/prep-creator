@@ -199,6 +199,7 @@ function browseAdd() {
 }
 // "Topic" in bold, then "Type › Option" plain
 function pickParts(pick, anyOption) {
+  if (pick === 'custom') return ['Written by Claude', 'Written out in full: it does not re-roll'];
   const [tid, vid] = pick.split(':'); const t = typeById[tid];
   if (!t) return [pick + ' (missing)', ''];
   if (anyOption || vid === '*') return [t.topic, `${t.type} › any option`];
@@ -256,7 +257,7 @@ function detailPanel(q, qi, slot, si, cq, part) {
         { sep: true },
         prep.draft && si > 0 && !(slot.def.link && q.slots[si - 1].def.link === slot.def.link) ? { label: 'Link with the part above', sub: 'One topic decision for both; each part keeps its own options', onClick: () => { linkWithAbove(prep, q, si); ctx.commit(); toast('Linked. Open each part’s pool (the pool icon) to choose the topics and the options for that part.', 6000); } } : null,
         slot.def.link ? { label: 'Unlink this part', sub: 'It chooses its own topic again', onClick: () => { unlinkSlot(prep, slot); ctx.commit(); } } : null,
-        isPool ? null : { label: 'Make this a pool…', sub: 'Re-roll picks from several questions you choose', onClick: () => { toPool(slot); ctx.commit(); openPoolDialog(slot, qi, si); } },
+        isPool || slot.def.mode === 'custom' ? null : { label: 'Make this a pool…', sub: 'Re-roll picks from several questions you choose', onClick: () => { toPool(slot); ctx.commit(); openPoolDialog(slot, qi, si); } },
         isPool ? { label: 'Stop being a pool', sub: 'Re-roll keeps this kind of question', onClick: () => { slot.def = { mode: 'fixed', pick: slot.pick }; ctx.commit(); } } : null,
         anyOpt ? { label: 'Keep this option', sub: 'Stop changing option when you re-roll', onClick: () => { slot.def = { mode: 'fixed', pick: slot.pick }; ctx.commit(); } } : null,
         { sep: true },

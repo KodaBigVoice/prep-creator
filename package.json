@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "check": "node tests/check.mjs",
+    "docs": "node tools/gen-reference.mjs",
     "verify": "node tests/check.mjs --dump tests/out.json && python3 tests/verify.py tests/out.json",
-    "test": "node tests/query.test.mjs && node tests/presetdraft.test.mjs && node tests/calc.test.mjs && node tests/sections.test.mjs && node tests/store.test.mjs && node tests/fresh.test.mjs && node tests/paginate.test.mjs && node tests/check.mjs --n=60"
+    "test": "node tests/query.test.mjs && node tests/presetdraft.test.mjs && node tests/calc.test.mjs && node tests/sections.test.mjs && node tests/store.test.mjs && node tests/import.test.mjs && node tests/reference.test.mjs && node tests/fresh.test.mjs && node tests/paginate.test.mjs && node tests/check.mjs --n=60"
   }
 }

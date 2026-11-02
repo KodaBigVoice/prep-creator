@@ -65,3 +65,21 @@ export function markBoxParts(style, total) {
   if (style === 'both') return [{ label: 'Mark', tail: `/ ${total}` }, { label: 'Percentage', tail: '%' }];
   return [{ label: 'Mark', tail: `/ ${total}` }];
 }
+
+// A cover described in an import file. Everything is optional; what is given changes the default cover and switches it on.
+//   { title, subtitle, topLine: "text" | false, bullets: ["…", …], mark: "none"|"total"|"mark"|"pct"|"both", name|set|date|logo|box: true | false | "label" }
+export function coverFromImport(spec, setId, base) {
+  const c = mergeCover(base, setId);
+  c.on = true;
+  if (spec === true || typeof spec !== 'object' || spec === null) return c;
+  const text = (k, v) => { if (v === false) c[k].on = false; else if (typeof v === 'string') { c[k].on = true; c[k].text = v; if (c[k].auto) c[k].auto = false; } };
+  text('topLine', spec.topLine); text('title', spec.title); text('subtitle', spec.subtitle);
+  if (Array.isArray(spec.bullets)) c.bullets = spec.bullets.filter(t => typeof t === 'string' && t.trim()).map(t => ({ id: 'b' + uid(), text: t, on: true }));
+  if (spec.bullets === false || (Array.isArray(spec.bullets) && !c.bullets.length)) c.box.on = false;
+  if (typeof spec.box === 'boolean') c.box.on = spec.box;
+  for (const k of ['name', 'set', 'date']) { const v = spec[k]; if (v === false) c[k].on = false; else if (v === true) c[k].on = true; else if (typeof v === 'string') { c[k].on = true; c[k].label = v; } }
+  if (typeof spec.logo === 'boolean') c.logo.on = spec.logo;
+  if (spec.mark === 'none' || spec.mark === false) c.mark.on = false;
+  else if (MARK_STYLES.some(([k]) => k === spec.mark)) { c.mark.on = true; c.mark.style = spec.mark; }
+  return c;
+}

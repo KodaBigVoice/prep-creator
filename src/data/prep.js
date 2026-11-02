@@ -1,7 +1,7 @@
 // Building and changing a prep: slots, pools, re-rolling, random preps.
 import { removeQuestionAt, moveQuestionBy, normalizeSections } from './sections.js';
 import { makeRng, newSeed } from '../core/rng.js';
-import { generate, parsePick, typeById, TYPES, defaultFlags, canon } from '../core/engine.js';
+import { generate, parsePick, typeById, TYPES, defaultFlags, canon, defaultLines } from '../core/engine.js';
 import { setById, defaultRubric } from './sets.js';
 import { avoidFor, newAvoid, sceneOfSlot, clash, CLASHES } from './fresh.js';
 import { poolByTopic, poolChoices, choiceOptions, upgradePool } from './pools.js';
@@ -21,7 +21,24 @@ function resolvePick(pick, r) {
 }
 export const topicOfPick = (pick) => { const p = parsePick(pick.replace(/:\*$/, '')); return p ? p.t.topic : null; };
 
+// A slot whose rule is { mode:'custom', stem?, parts:[{ body, a, w, calc, m, lines }] } holds a question written out in full (by Claude, through the importer).
+// It never re-rolls: re-roll, new numbers, easier and harder leave it as it is.
+export const isCustom = (slot) => !!slot && !!slot.def && slot.def.mode === 'custom';
+function fillCustom(slot) {
+  const d = slot.def;
+  const parts = d.parts.map(p => ({ body: p.body, a: p.a, w: p.w || '', verb: '', calc: !!p.calc, m: p.m || 1, lines: p.lines ?? defaultLines(p.m || 1) }));
+  slot.snapshot = { stem: d.stem || null, parts };
+  slot.meta = { topic: 'Written by Claude', type: 'Written out', label: '', multipart: parts.length > 1, typeId: 'custom', integer: false };
+  slot.markDefaults = parts.map((p, i) => (d.marks && d.marks[i] !== undefined ? d.marks[i] : p.m));
+  slot.lineDefaults = parts.map((p, i) => (d.lines && d.lines[i] !== undefined ? d.lines[i] : p.lines));
+  const mm = parts.map((_, i) => !!(slot.marksManual && slot.marksManual[i])), lm = parts.map((_, i) => !!(slot.linesManual && slot.linesManual[i]));
+  slot.marks = slot.markDefaults.map((x, i) => (mm[i] && slot.marks && slot.marks[i] !== undefined ? slot.marks[i] : x));
+  slot.lines = slot.lineDefaults.map((x, i) => (lm[i] && slot.lines && slot.lines[i] !== undefined ? slot.lines[i] : x));
+  slot.marksManual = mm; slot.linesManual = lm;
+  return slot;
+}
 function fillSnapshot(slot) {
+  if (isCustom(slot)) return fillCustom(slot);
   const q = generate(slot.pick, slot.seed, slot.flags);
   slot.snapshot = { stem: q.stem, parts: q.parts.map(p => ({ body: p.body, a: p.a, w: p.w, verb: p.verb, calc: p.calc, m: p.m, lines: p.lines })) };
   slot.meta = { topic: q.topic, type: q.type, label: q.label, multipart: q.multipart, typeId: q.typeId, integer: !!typeById[q.typeId].integer };
@@ -40,6 +57,7 @@ function fillSnapshot(slot) {
 
 // def: the preset slot (fixed or pool); usedTopics: topics already in this prep
 export function makeSlot(def, usedTopics = new Set(), rng = makeRng(newSeed()), keys = new Set(), avoid = null, opts = {}) {
+  if (def.mode === 'custom') return fillCustom({ id: uid(), def: JSON.parse(JSON.stringify(def)), seed: 0, pick: 'custom', locked: false, flags: null, edits: null });
   const slot = { id: uid(), def: JSON.parse(JSON.stringify(def)), seed: newSeed(), locked: false, flags: null, edits: null };
   choosePick(slot, usedTopics, rng, keys, opts);
   freshen(slot, avoid, () => { slot.seed = newSeed(); choosePick(slot, usedTopics, rng, keys, opts); });
@@ -235,7 +253,7 @@ export function regroup(prep, slot) {
   if (!fits && !g.some(m => m.locked)) drawGroup(prep, g, undefined);
 }
 export function rerollSlot(prep, slot) {
-  if (slot.locked) return slot;
+  if (slot.locked || isCustom(slot)) return slot;
   const group = linkGroup(prep, slot);
   if (group.length > 1) { if (!group.some(m => m.locked)) drawGroup(prep, group, slot.meta && slot.meta.topic); return slot; }
   slot.edits = null;
@@ -276,13 +294,13 @@ export function rerollInTopic(prep, slot) {
 }
 // same question, new numbers (steering clear of a recent story where it can)
 export function renumber(prep, slot) {
-  if (slot.locked) return slot;
+  if (slot.locked || isCustom(slot)) return slot;
   slot.edits = null;
   const roll = () => { slot.seed = newSeed(); };
   roll(); freshen(slot, avoidFor(prep, slot.id), roll);
   return fillSnapshot(slot);
 }
-export function reseed(slot, seed = newSeed()) { slot.seed = seed; slot.edits = null; return fillSnapshot(slot); }
+export function reseed(slot, seed = newSeed()) { if (isCustom(slot)) return fillSnapshot(slot); slot.seed = seed; slot.edits = null; return fillSnapshot(slot); }
 export function setFlags(slot, flags) { slot.flags = { ...(slot.flags || {}), ...flags }; return fillSnapshot(slot); }
 // choose a specific type/variant by hand: the slot becomes a fixed slot
 // Apply a choice from the picker. fixedPick ('typeId:*') means "any option of this type"; pick is the concrete example shown.
@@ -339,7 +357,7 @@ export function queryOfPick(pick) {
 // Step to the next easier (-1) or harder (+1) question in this question's topic. Works on any question:
 // a hand-picked one becomes a Quick question; a pool stays a pool (re-rolling still moves between its topics). False at either end.
 function nudgeTarget(slot, dir) {
-  if (slot.locked) return null;
+  if (slot.locked || isCustom(slot)) return null;
   const e = entryOfPick(slot.pick); if (!e) return null;
   const od = slot.def;
   const def = od.mode === 'query' ? od : od.mode === 'pool' ? { mode: 'query', topics: [e.topic], level: null } : { mode: 'query', topics: [e.topic], level: levelOf(e) };

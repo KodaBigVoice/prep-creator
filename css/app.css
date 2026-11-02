@@ -402,3 +402,7 @@ body.resizing{cursor:col-resize;user-select:none}
 @media (max-width:700px){.plan-top{grid-template-columns:1fr}}
 .sec-head{flex-wrap:wrap;row-gap:4px}
 .sec-head .sec-title{order:3;flex:1 0 100%}
+.importerr{border:1px solid #e0a0a0;background:#fff5f5;border-radius:6px;padding:8px 10px}
+.importerr ul{margin:6px 0 8px 18px;padding:0}
+.importerr li{margin:2px 0}
+.importerr code{background:#fff;border:1px solid #eadada;border-radius:3px;padding:0 3px;font-size:11px}

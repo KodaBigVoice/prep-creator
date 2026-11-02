@@ -13,6 +13,7 @@ import { setNonCalc } from '../data/query.js';
 import { buildLayout, buildAnswerPages, DEFAULT_LAYOUT, FLOORS } from '../layout/layout.js';
 import { renderBuilder } from './builder.js';
 import { openHistory, openSavePreset } from './dialogs.js';
+import { openImportDialog } from './importdlg.js';
 import { totalMarks } from '../layout/compose.js';
 import { presetFromPrep } from '../data/presetdraft.js';
 
@@ -115,6 +116,19 @@ function useSet(setId, presetId = undefined) {
   ctx.prep.presetId = preset ? preset.id : null;
   ctx.dirty = false; afterLoad();
 }
+// A sheet written by Claude (see claudeimport.js): it replaces what is on screen, which goes to History first
+function buildImported(res) {
+  autosavePrevious();
+  const { name, calcMode, cover } = res.prep;
+  const prep = finishNew(res.prep);
+  Object.assign(prep, { name, nameAuto: false, calcMode, presetId: null });
+  if (cover) prep.cover = cover;
+  ctx.stash = null;
+  Object.assign(ctx.layout, res.layout);
+  ctx.prep = prep; ctx.dirty = false; afterLoad();
+  ctx.dirty = true; ctx.hooks.status();
+  toast(`Built “${prep.name}”: ${res.summary.questions} questions, ${res.summary.marks} marks.`, 5000);
+}
 function randomFor(setId) { autosavePrevious(); ctx.prep = finishNew(P.randomPrep(setId, 'x')); ctx.dirty = false; afterLoad(); }
 function blankFor(setId) { autosavePrevious(); ctx.prep = finishNew(P.newPrep({ set: setId, name: 'x', minutes: setById[setId].minutes })); ctx.prep.presetId = null; ctx.dirty = false; afterLoad(); }
 // ---------- the preset editor ----------
@@ -209,11 +223,17 @@ function renderToolbar() {
       h('button', { class: 'btn arrow', 'aria-label': 'Download options', onClick: (e) => downloadMenu(e.currentTarget) }, '▾')));
   ctx.hooks.status();
 }
+async function importFromClaude() {
+  if (ctx.prep.draft && !(await confirmBox({ title: 'Leave the preset editor?', message: ['The preset you are building is not saved: any changes to it are lost.'], confirmLabel: 'Leave it' }))) return;
+  openImportDialog({ onBuild: buildImported });
+}
 function newMenu(anchor) {
   const prep = ctx.prep;
   showMenu(anchor, [
     { label: 'New blank prep', onClick: async () => { if (await confirmReplace('Start a blank prep?', `This replaces “${prep.name}” on screen with an empty prep.`, 'Start blank prep')) blankFor(prep.set); } },
     { label: 'New random prep', onClick: async () => { if (await confirmReplace('Start a random prep?', `This replaces “${prep.name}” on screen with a randomly chosen prep.`, 'Make random prep')) randomFor(prep.set); } },
+    { sep: true },
+    { label: 'Import from Claude…', sub: 'Paste or upload a sheet Claude designed', onClick: importFromClaude },
   ]);
 }
 function toggleSidebar() {
@@ -320,7 +340,11 @@ function tabPresets(el) {
       h('button', { class: 'btn', onClick: () => startDraft(null) }, 'New preset…'),
       mine ? h('button', { class: 'btn', onClick: () => startDraft(mine.id) }, `Edit “${mine.name}”`) : null,
       cur ? h('button', { class: 'btn', onClick: () => startDraft(cur.id, { copy: true }) }, `Make my own copy of “${cur.name.replace(/ \(starter recipe\)$/, '')}”…`) : null,
-      h('button', { class: 'btn', onClick: openSavePreset }, 'Save this prep as a preset…')));
+      h('button', { class: 'btn', onClick: openSavePreset }, 'Save this prep as a preset…')),
+    h('hr'),
+    h('div', { class: 'sec' }, 'Sheets from Claude'),
+    h('div', { class: 'hint' }, 'Design a worksheet or prep in a chat with Claude, then paste its file here to print it in PMU style.'),
+    h('div', { class: 'stack' }, h('button', { class: 'btn', onClick: importFromClaude }, 'Import from Claude…')));
 }
 
 // ---------- the Paper tab: calculators and the cover page ----------
