@@ -8,6 +8,23 @@
 <link rel="stylesheet" href="vendor/katex/katex.min.css">
 <link rel="stylesheet" href="css/sheet.css">
 <link rel="stylesheet" href="css/app.css">
+<script>
+// If the app cannot start (a blocked file, an old browser, a bug) say so on screen instead of leaving a white page.
+(function () {
+  var shown = false;
+  function show(msg) {
+    if (shown) return; shown = true;
+    var d = document.createElement('div');
+    d.style.cssText = 'font:15px/1.5 system-ui,sans-serif;max-width:640px;margin:40px auto;padding:16px 20px;border:2px solid #c0392b;border-radius:8px;background:#fff5f5;color:#222';
+    d.innerHTML = '<b>The prep creator could not start.</b><br>Please send Tanmay this text (a photo of the screen is fine):<pre style="white-space:pre-wrap;background:#fff;border:1px solid #ddd;padding:8px;font-size:13px"></pre>';
+    d.querySelector('pre').textContent = msg + '\n\nBrowser: ' + navigator.userAgent + '\nPage: ' + location.href;
+    (document.body || document.documentElement).appendChild(d);
+  }
+  window.addEventListener('error', function (e) { if (e.target && e.target !== window && (e.target.src || e.target.href)) show('A file did not load: ' + (e.target.src || e.target.href)); else show('Error: ' + e.message + (e.filename ? ' (' + e.filename.split('/').pop() + ':' + e.lineno + ')' : '')); }, true);
+  window.addEventListener('unhandledrejection', function (e) { show('Error: ' + (e.reason && e.reason.message || e.reason)); });
+  setTimeout(function () { var a = document.getElementById('app'); if (!a || !a.children.length) show('The page loaded but nothing appeared after 5 seconds. katex: ' + typeof window.katex + '.'); }, 5000);
+})();
+</script>
 <script defer src="dist/prep.js"></script>
 </head>
 <body>
