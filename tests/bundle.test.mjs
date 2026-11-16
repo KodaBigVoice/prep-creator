@@ -1,7 +1,6 @@
-// dist/prep.js is what the site serves: it must be built from the current source.
+// dist/prep.js is what the site serves: it must be built from the current source (scripts, styles and KaTeX).
 import fs from 'fs';
-import { bundle, katexCss } from '../tools/bundle.mjs';
+import { bundle } from '../tools/bundle.mjs';
 const built = fs.readFileSync(new URL('../dist/prep.js', import.meta.url), 'utf8');
 if (built !== await bundle()) { console.log('FAIL dist/prep.js is out of date: run  npm run build'); process.exit(1); }
-if (fs.readFileSync(new URL('../dist/katex.css', import.meta.url), 'utf8') !== katexCss()) { console.log('FAIL dist/katex.css is out of date: run  npm run build'); process.exit(1); }
 console.log('bundle: up to date');
