@@ -17,12 +17,18 @@
     d.querySelector('pre').textContent = msg + '\n\nBrowser: ' + navigator.userAgent + '\nPage: ' + location.href;
     (document.body || document.documentElement).appendChild(d);
   }
-  window.addEventListener('error', function (e) { if (e.target && e.target !== window && (e.target.src || e.target.href)) show('A file did not load: ' + (e.target.src || e.target.href)); else show('Error: ' + e.message + (e.filename ? ' (' + e.filename.split('/').pop() + ':' + e.lineno + ')' : '')); }, true);
+  var tries = 0, delays = [1500, 3000, 6000];
+  window.addEventListener('error', function (e) {
+    if (e.target && e.target.id === 'pmu-script') {          // the app script did not arrive: try again a few times before giving up (flaky networks, filters)
+      if (tries < delays.length) { var n = ++tries; setTimeout(function () { var t = document.createElement('script'); t.id = 'pmu-script'; t.src = 'dist/prep.js?retry=' + n + '-' + Date.now(); (document.head || document.documentElement).appendChild(t); }, delays[n - 1]); return; }
+      show('A file did not load (after ' + (tries + 1) + ' tries): ' + e.target.src + '\nOnline: ' + navigator.onLine); return;
+    }
+    if (e.target && e.target !== window && (e.target.src || e.target.href)) show('A file did not load: ' + (e.target.src || e.target.href)); else show('Error: ' + e.message + (e.filename ? ' (' + e.filename.split('/').pop() + ':' + e.lineno + ')' : '')); }, true);
   window.addEventListener('unhandledrejection', function (e) { show('Error: ' + (e.reason && e.reason.message || e.reason)); });
-  setTimeout(function () { var a = document.getElementById('app'); if (!a || !a.children.length) show('The page loaded but nothing appeared after 5 seconds. katex: ' + typeof window.katex + '.'); }, 5000);
+  setTimeout(function () { var a = document.getElementById('app'); if (!a || !a.children.length) show('The page loaded but nothing appeared after 20 seconds. katex: ' + typeof window.katex + '.'); }, 20000);
 })();
 </script>
-<script defer src="dist/prep.js"></script>
+<script defer id="pmu-script" src="dist/prep.js"></script>
 </head>
 <body>
 <div id="app"></div>
