@@ -2,7 +2,7 @@
 
 A web app for building maths prep worksheets: pick a preset (or build one), get a fresh set of numbers every time, and print to PDF — questions only, or with working space on the sheet — plus an answers PDF.
 
-It is a plain static site: no build step, no server, nothing to install to *use* it.
+It is a plain static site: no server, nothing to install to *use* it. `prep.html` is generated: it holds the whole prep creator (code, styles, maths fonts) in one self-contained page, because on some school devices separate script, style and font files failed to load. After changing anything in `src/`, `css/` or `src/prep.template.html`, run `npm run build` (`npm test` fails if you forget). The folder `src/` stays the place to edit; do not edit `prep.html` by hand.
 
 ## Putting it online (GitHub + Netlify)
 
